@@ -5,7 +5,9 @@
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "sim-server": "node simulator_server.js"
+    "sim-server": "node src/server.js",
+    "setup-admin": "node setup_admin.js",
+    "test-complete": "node test_simulator.js"
   },
   "keywords": [],
   "author": "",

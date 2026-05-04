@@ -1,6 +1,4 @@
-const dbConn = require('../config/db');
-
-const db = dbConn.promise ? dbConn.promise() : dbConn;
+const db = require('../config/db');
 
 exports.listEnvios = async (req, res, next) => {
   try {

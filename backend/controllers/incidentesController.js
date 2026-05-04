@@ -1,5 +1,4 @@
-const dbConn = require('../config/db');
-const db = dbConn.promise ? dbConn.promise() : dbConn;
+const db = require('../config/db');
 
 // Listar incidentes recientes
 exports.listIncidentes = async (req, res, next) => {
