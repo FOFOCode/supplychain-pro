@@ -1,0 +1,21 @@
+name: SupplyChain Pro - CI Build
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build-services:
+    runs-on: ubuntu-latest
+    steps:
+      # Obtener el codigo fuente
+      - uses: actions/checkout@v4
+      # Habilitar buildx para builds Docker
+      - uses: docker/setup-buildx-action@v3
+      - name: Construir imagen BACKEND
+        run: docker build -t supplychainpro-backend ./backend
+      - name: Construir imagen SIMULATOR
+        run: docker build -t supplychainpro-simulator ./simulator
+      - name: Validar docker-compose.yml
+        run: docker compose config
