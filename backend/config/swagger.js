@@ -15,14 +15,18 @@ const options = {
     info: {
       title: "SupplyChain Pro Backend API",
       version: "1.0.0",
-      description: "Documentacion de endpoints del backend para monitoreo logistico.",
+      description:
+        "Documentacion de endpoints del backend para monitoreo logistico.",
     },
-    servers: [
-      {
-        url: serverUrl,
-        description: "Servidor local",
-      },
-    ],
+    // Expose both the resolved serverUrl and a host-accessible localhost URL
+    // so Swagger UI running in the browser can call the API on the correct port.
+    servers: (function () {
+      const list = [];
+      const hostUrl = `http://localhost:${process.env.BACKEND_HOST_PORT || serverPort}`;
+      if (serverUrl && !list.includes(serverUrl)) list.push({ url: serverUrl, description: 'Docker/internal URL' });
+      if (hostUrl && hostUrl !== serverUrl) list.push({ url: hostUrl, description: 'Host (localhost) URL' });
+      return list;
+    })(),
     components: {
       securitySchemes: {
         bearerAuth: { type: "http", scheme: "bearer", bearerFormat: "JWT" },
