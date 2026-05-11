@@ -19,7 +19,8 @@ const rutasRoutes = require("./routes/rutas");
 
 const app = express(); //Instancia del servidor
 //Evitar errores al consumir en React
-const allowedOrigins = [];
+// Permitir localhost en desarrollo; en producción, configura desde variable de entorno
+const allowedOrigins = (process.env.CORS_ORIGINS || 'http://localhost:5001,http://localhost:3000').split(',');
 
 app.use(
   cors({
