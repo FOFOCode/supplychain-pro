@@ -5,9 +5,10 @@ const cors = require("cors"); //Para permitir solicitudes desde otro dominio
 const db = require("./config/db");
 
 const app = express(); //Instancia del servidor
- //Evitar errores al consumir en React
+
 const allowedOrigins = [
-  
+  process.env.FRONTEND_ORIGIN || 'http://localhost:5173',
+  'http://127.0.0.1:5173',
 ];
 
 app.use(cors({
