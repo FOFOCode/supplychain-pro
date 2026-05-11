@@ -132,7 +132,43 @@ const options = {
     },
     paths: {
       "/api/auth/login": {
-        post: { tags: ["Auth"], summary: "Iniciar sesion" },
+        post: {
+          tags: ["Auth"],
+          summary: "Iniciar sesion",
+          requestBody: {
+            required: true,
+            content: {
+              "application/json": {
+                schema: {
+                  type: "object",
+                  properties: {
+                    correo: { type: "string", example: "admin@local.test" },
+                    contrasena: { type: "string", example: "admin123" },
+                  },
+                  required: ["correo", "contrasena"],
+                },
+              },
+            },
+          },
+          responses: {
+            "200": {
+              description: "Login successful",
+              content: {
+                "application/json": {
+                  schema: {
+                    type: "object",
+                    properties: {
+                      token: { type: "string" },
+                      user: { type: "object" },
+                    },
+                  },
+                },
+              },
+            },
+            "401": { description: "Credenciales inválidas" },
+          },
+        },
+      },
       },
       "/api/auth/me": {
         get: {
