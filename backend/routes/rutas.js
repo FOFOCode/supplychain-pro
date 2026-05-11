@@ -1,8 +1,8 @@
-const express = require('express');
+const express = require("express");
 const router = express.Router();
-const ctrl = require('../controllers/rutasController');
-const { authenticate } = require('../middlewares/auth');
-const requireRole = require('../middlewares/requireRole');
+const ctrl = require("../controllers/rutasController");
+const { authenticate } = require("../middlewares/auth");
+const requireRole = require("../middlewares/requireRole");
 
 /**
  * @openapi
@@ -39,8 +39,8 @@ const requireRole = require('../middlewares/requireRole');
  *       200:
  *         description: Ruta encontrada
  */
-router.get('/', authenticate, ctrl.listRutas);
-router.post('/', authenticate, requireRole('ADMIN'), ctrl.createRuta);
-router.get('/:id', authenticate, ctrl.getRuta);
+router.get("/", authenticate, ctrl.listRutas);
+router.post("/", authenticate, requireRole("ADMIN"), ctrl.createRuta);
+router.get("/:id", authenticate, ctrl.getRuta);
 
 module.exports = router;

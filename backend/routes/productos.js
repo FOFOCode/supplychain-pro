@@ -1,8 +1,8 @@
-const express = require('express');
+const express = require("express");
 const router = express.Router();
-const ctrl = require('../controllers/productosController');
-const { authenticate } = require('../middlewares/auth');
-const requireRole = require('../middlewares/requireRole');
+const ctrl = require("../controllers/productosController");
+const { authenticate } = require("../middlewares/auth");
+const requireRole = require("../middlewares/requireRole");
 
 /**
  * @openapi
@@ -55,10 +55,10 @@ const requireRole = require('../middlewares/requireRole');
  *       204:
  *         description: Producto eliminado
  */
-router.get('/', authenticate, ctrl.listProductos);
-router.get('/:id', authenticate, ctrl.getProducto);
-router.post('/', authenticate, requireRole('ADMIN'), ctrl.createProducto);
-router.put('/:id', authenticate, requireRole('ADMIN'), ctrl.updateProducto);
-router.delete('/:id', authenticate, requireRole('ADMIN'), ctrl.deleteProducto);
+router.get("/", authenticate, ctrl.listProductos);
+router.get("/:id", authenticate, ctrl.getProducto);
+router.post("/", authenticate, requireRole("ADMIN"), ctrl.createProducto);
+router.put("/:id", authenticate, requireRole("ADMIN"), ctrl.updateProducto);
+router.delete("/:id", authenticate, requireRole("ADMIN"), ctrl.deleteProducto);
 
 module.exports = router;

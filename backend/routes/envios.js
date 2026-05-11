@@ -1,8 +1,8 @@
-const express = require('express');
+const express = require("express");
 const router = express.Router();
-const ctrl = require('../controllers/enviosController');
-const { authenticate } = require('../middlewares/auth');
-const requireRole = require('../middlewares/requireRole');
+const ctrl = require("../controllers/enviosController");
+const { authenticate } = require("../middlewares/auth");
+const requireRole = require("../middlewares/requireRole");
 
 /**
  * @openapi
@@ -67,10 +67,10 @@ const requireRole = require('../middlewares/requireRole');
  *       204:
  *         description: Envío eliminado
  */
-router.get('/', authenticate, ctrl.listEnvios);
-router.get('/:id', authenticate, ctrl.getEnvio);
-router.post('/', authenticate, requireRole('ADMIN'), ctrl.createEnvio);
-router.put('/:id', authenticate, requireRole('ADMIN'), ctrl.updateEnvio);
-router.delete('/:id', authenticate, requireRole('ADMIN'), ctrl.deleteEnvio);
+router.get("/", authenticate, ctrl.listEnvios);
+router.get("/:id", authenticate, ctrl.getEnvio);
+router.post("/", authenticate, requireRole("ADMIN"), ctrl.createEnvio);
+router.put("/:id", authenticate, requireRole("ADMIN"), ctrl.updateEnvio);
+router.delete("/:id", authenticate, requireRole("ADMIN"), ctrl.deleteEnvio);
 
 module.exports = router;

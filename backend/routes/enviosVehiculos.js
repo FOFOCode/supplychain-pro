@@ -1,8 +1,8 @@
-const express = require('express');
+const express = require("express");
 const router = express.Router();
-const ctrl = require('../controllers/enviosVehiculosController');
-const { authenticate } = require('../middlewares/auth');
-const requireRole = require('../middlewares/requireRole');
+const ctrl = require("../controllers/enviosVehiculosController");
+const { authenticate } = require("../middlewares/auth");
+const requireRole = require("../middlewares/requireRole");
 
 /**
  * @openapi
@@ -39,8 +39,8 @@ const requireRole = require('../middlewares/requireRole');
  *       200:
  *         description: Asignación encontrada
  */
-router.get('/', authenticate, ctrl.listAsignaciones);
-router.post('/', authenticate, requireRole('ADMIN'), ctrl.createAsignacion);
-router.get('/:id', authenticate, ctrl.getAsignacion);
+router.get("/", authenticate, ctrl.listAsignaciones);
+router.post("/", authenticate, requireRole("ADMIN"), ctrl.createAsignacion);
+router.get("/:id", authenticate, ctrl.getAsignacion);
 
 module.exports = router;

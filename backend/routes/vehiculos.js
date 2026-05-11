@@ -1,8 +1,8 @@
-const express = require('express');
+const express = require("express");
 const router = express.Router();
-const ctrl = require('../controllers/vehiculosController');
-const { authenticate } = require('../middlewares/auth');
-const requireRole = require('../middlewares/requireRole');
+const ctrl = require("../controllers/vehiculosController");
+const { authenticate } = require("../middlewares/auth");
+const requireRole = require("../middlewares/requireRole");
 
 /**
  * @openapi
@@ -55,10 +55,10 @@ const requireRole = require('../middlewares/requireRole');
  *       204:
  *         description: Vehículo eliminado
  */
-router.get('/', authenticate, ctrl.listVehiculos);
-router.get('/:id', authenticate, ctrl.getVehiculo);
-router.post('/', authenticate, requireRole('ADMIN'), ctrl.createVehiculo);
-router.put('/:id', authenticate, requireRole('ADMIN'), ctrl.updateVehiculo);
-router.delete('/:id', authenticate, requireRole('ADMIN'), ctrl.deleteVehiculo);
+router.get("/", authenticate, ctrl.listVehiculos);
+router.get("/:id", authenticate, ctrl.getVehiculo);
+router.post("/", authenticate, requireRole("ADMIN"), ctrl.createVehiculo);
+router.put("/:id", authenticate, requireRole("ADMIN"), ctrl.updateVehiculo);
+router.delete("/:id", authenticate, requireRole("ADMIN"), ctrl.deleteVehiculo);
 
 module.exports = router;

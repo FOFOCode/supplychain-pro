@@ -1,7 +1,7 @@
-const express = require('express');
+const express = require("express");
 const router = express.Router();
-const ctrl = require('../controllers/authController');
-const { authenticate } = require('../middlewares/auth');
+const ctrl = require("../controllers/authController");
+const { authenticate } = require("../middlewares/auth");
 
 /**
  * @openapi
@@ -27,7 +27,7 @@ const { authenticate } = require('../middlewares/auth');
  *       401:
  *         description: Credenciales inválidas
  */
-router.post('/login', ctrl.login);
+router.post("/login", ctrl.login);
 
 /**
  * @openapi
@@ -47,6 +47,6 @@ router.post('/login', ctrl.login);
  *       401:
  *         description: No autorizado
  */
-router.get('/me', authenticate, ctrl.me);
+router.get("/me", authenticate, ctrl.me);
 
 module.exports = router;

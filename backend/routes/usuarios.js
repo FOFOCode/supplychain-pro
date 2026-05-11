@@ -1,8 +1,8 @@
-const express = require('express');
+const express = require("express");
 const router = express.Router();
-const ctrl = require('../controllers/usuariosController');
-const { authenticate } = require('../middlewares/auth');
-const requireRole = require('../middlewares/requireRole');
+const ctrl = require("../controllers/usuariosController");
+const { authenticate } = require("../middlewares/auth");
+const requireRole = require("../middlewares/requireRole");
 
 /**
  * @openapi
@@ -53,9 +53,9 @@ const requireRole = require('../middlewares/requireRole');
  *       200:
  *         description: Usuario actualizado
  */
-router.get('/', authenticate, ctrl.listUsuarios);
-router.get('/:id', authenticate, ctrl.getUsuario);
-router.post('/', authenticate, requireRole('ADMIN'), ctrl.createUsuario);
-router.put('/:id', authenticate, requireRole('ADMIN'), ctrl.updateUsuario);
+router.get("/", authenticate, ctrl.listUsuarios);
+router.get("/:id", authenticate, ctrl.getUsuario);
+router.post("/", authenticate, requireRole("ADMIN"), ctrl.createUsuario);
+router.put("/:id", authenticate, requireRole("ADMIN"), ctrl.updateUsuario);
 
 module.exports = router;

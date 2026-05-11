@@ -1,8 +1,8 @@
-const express = require('express');
+const express = require("express");
 const router = express.Router();
-const ctrl = require('../controllers/incidentesController');
-const { authenticate } = require('../middlewares/auth');
-const requireRole = require('../middlewares/requireRole');
+const ctrl = require("../controllers/incidentesController");
+const { authenticate } = require("../middlewares/auth");
+const requireRole = require("../middlewares/requireRole");
 
 /**
  * @openapi
@@ -39,8 +39,8 @@ const requireRole = require('../middlewares/requireRole');
  *       200:
  *         description: Incidente encontrado
  */
-router.get('/', authenticate, ctrl.listIncidentes);
-router.post('/', authenticate, requireRole('ADMIN'), ctrl.createIncidente);
-router.get('/:id', authenticate, ctrl.getIncidente);
+router.get("/", authenticate, ctrl.listIncidentes);
+router.post("/", authenticate, requireRole("ADMIN"), ctrl.createIncidente);
+router.get("/:id", authenticate, ctrl.getIncidente);
 
 module.exports = router;

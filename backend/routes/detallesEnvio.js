@@ -1,8 +1,8 @@
-const express = require('express');
+const express = require("express");
 const router = express.Router();
-const ctrl = require('../controllers/detallesEnvioController');
-const { authenticate } = require('../middlewares/auth');
-const requireRole = require('../middlewares/requireRole');
+const ctrl = require("../controllers/detallesEnvioController");
+const { authenticate } = require("../middlewares/auth");
+const requireRole = require("../middlewares/requireRole");
 
 /**
  * @openapi
@@ -39,8 +39,8 @@ const requireRole = require('../middlewares/requireRole');
  *       204:
  *         description: Detalle eliminado
  */
-router.get('/', authenticate, ctrl.listDetalles);
-router.post('/', authenticate, requireRole('ADMIN'), ctrl.createDetalle);
-router.delete('/:id', authenticate, requireRole('ADMIN'), ctrl.deleteDetalle);
+router.get("/", authenticate, ctrl.listDetalles);
+router.post("/", authenticate, requireRole("ADMIN"), ctrl.createDetalle);
+router.delete("/:id", authenticate, requireRole("ADMIN"), ctrl.deleteDetalle);
 
 module.exports = router;

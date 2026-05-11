@@ -1,7 +1,7 @@
-const express = require('express');
+const express = require("express");
 const router = express.Router();
-const ctrl = require('../controllers/registrosTelemetriaController');
-const { authenticate } = require('../middlewares/auth');
+const ctrl = require("../controllers/registrosTelemetriaController");
+const { authenticate } = require("../middlewares/auth");
 
 /**
  * @openapi
@@ -49,8 +49,8 @@ const { authenticate } = require('../middlewares/auth');
  *       200:
  *         description: Registro encontrado
  */
-router.post('/', ctrl.createRegistro);
-router.get('/envio/:id', authenticate, ctrl.listRegistrosPorEnvio);
-router.get('/:id', authenticate, ctrl.getRegistro);
+router.post("/", ctrl.createRegistro);
+router.get("/envio/:id", authenticate, ctrl.listRegistrosPorEnvio);
+router.get("/:id", authenticate, ctrl.getRegistro);
 
 module.exports = router;

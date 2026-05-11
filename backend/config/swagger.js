@@ -23,8 +23,10 @@ const options = {
     servers: (function () {
       const list = [];
       const hostUrl = `http://localhost:${process.env.BACKEND_HOST_PORT || serverPort}`;
-      if (serverUrl && !list.includes(serverUrl)) list.push({ url: serverUrl, description: 'Docker/internal URL' });
-      if (hostUrl && hostUrl !== serverUrl) list.push({ url: hostUrl, description: 'Host (localhost) URL' });
+      if (serverUrl && !list.includes(serverUrl))
+        list.push({ url: serverUrl, description: "Docker/internal URL" });
+      if (hostUrl && hostUrl !== serverUrl)
+        list.push({ url: hostUrl, description: "Host (localhost) URL" });
       return list;
     })(),
     components: {

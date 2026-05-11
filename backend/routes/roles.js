@@ -1,8 +1,8 @@
-const express = require('express');
+const express = require("express");
 const router = express.Router();
-const ctrl = require('../controllers/rolesController');
-const { authenticate } = require('../middlewares/auth');
-const requireRole = require('../middlewares/requireRole');
+const ctrl = require("../controllers/rolesController");
+const { authenticate } = require("../middlewares/auth");
+const requireRole = require("../middlewares/requireRole");
 
 /**
  * @openapi
@@ -24,7 +24,7 @@ const requireRole = require('../middlewares/requireRole');
  *       201:
  *         description: Rol creado
  */
-router.get('/', authenticate, ctrl.listRoles);
-router.post('/', authenticate, requireRole('ADMIN'), ctrl.createRol);
+router.get("/", authenticate, ctrl.listRoles);
+router.post("/", authenticate, requireRole("ADMIN"), ctrl.createRol);
 
 module.exports = router;

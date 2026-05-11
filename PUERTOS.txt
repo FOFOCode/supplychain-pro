@@ -107,3 +107,12 @@ NOTAS IMPORTANTES:
 
 Última actualización: 11 de mayo de 2026
 ================================================================================
+
+Admin 1:
+
+Correo: admin@local.test
+Contraseña: admin123
+Admin 2:
+
+Correo: test@admin.com
+Contraseña: test123456
