@@ -2,6 +2,8 @@
 services:
   supplychainpro-db:
     image: mysql:8.0
+    env_file:
+      - ./.env
     # Credenciales y DB desde .env
     environment:
       MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
@@ -25,6 +27,8 @@ services:
 
   supplychainpro-backend:
     build: ./backend
+    env_file:
+      - ./.env
     depends_on:
       supplychainpro-db:
         condition: service_healthy
@@ -35,17 +39,21 @@ services:
       DB_USER: ${DB_USER}
       DB_PASSWORD: ${DB_PASSWORD}
       DB_NAME: ${DB_NAME}
+      # Puerto interno del proceso Node dentro del contenedor
       PORT: ${PORT}
       JWT_SECRET: ${JWT_SECRET}
       NODE_ENV: ${NODE_ENV}
     ports:
-      - "${PORT:-5000}:5000"
+      # Puerto publicado del host separado del puerto interno de la app
+      - "${BACKEND_HOST_PORT:-5001}:5000"
     restart: unless-stopped
     networks:
       - supplychain-net
 
   supplychainpro-simulator:
     build: ./simulator
+    env_file:
+      - ./.env
     depends_on:
       supplychainpro-db:
         condition: service_healthy
@@ -67,13 +75,16 @@ services:
 
   supplychainpro-phpmyadmin:
     image: phpmyadmin:latest
+    env_file:
+      - ./.env
     # Cliente web para administrar la DB
     restart: unless-stopped
     depends_on:
       supplychainpro-db:
         condition: service_healthy
     ports:
-      - "8080:80"
+      # Puerto publicado configurable para evitar conflictos locales
+      - "${PHPMYADMIN_HOST_PORT:-8080}:80"
     environment:
       # Conectar al servicio de MySQL interno
       PMA_HOST: supplychainpro-db
