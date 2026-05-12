@@ -42,57 +42,16 @@ Nota: Si quieres una base limpia de contenedores antes de validar:
 docker compose down
 
 
-3) Configuracion inicial del entorno
+
+3) Instalación y arranque (moved to README.md)
 -------------------------------------------------------------------------------
-1. Revisar archivo .env en la raiz del proyecto.
-2. Variables claves esperadas:
-   DB_HOST=supplychainpro-db
-   DB_PORT=3306
-   DB_NAME=supplychain_db
-   DB_USER=supplychain_user
-   DB_PASSWORD=admin
-   DB_ROOT_PASSWORD=admin
-   PORT=5000
-   BACKEND_HOST_PORT=5001
-   PHPMYADMIN_HOST_PORT=8080
-   BACKEND_URL=http://supplychainpro-backend:5000
-   CORS_ORIGINS=http://localhost:5173,http://127.0.0.1:5173,http://localhost:5001,http://localhost:3000
+Las instrucciones sobre configuración inicial, arranque con Docker y descripción de
+puertos han sido movidas a `README.md` para facilitar su lectura y renderizado.
 
+Por favor, consulta [README.md](README.md) para la guía de instalación rápida,
+comandos de arranque y validación.
 
-4) Instalacion y arranque del proyecto completo
--------------------------------------------------------------------------------
-Desde la raiz del proyecto ejecutar:
-
-1. Construir imagenes y levantar servicios:
-   docker compose up -d --build
-
-2. Ver estado:
-   docker compose ps
-
-3. Ver logs (si algo falla):
-   docker compose logs -f
-
-
-5) Puertos y servicios
--------------------------------------------------------------------------------
-Puertos publicos (host):
-
-- 5001 -> Backend API (contenedor 5000)
-  URL: http://localhost:5001
-  Swagger UI: http://localhost:5001/api-docs
-  Swagger JSON: http://localhost:5001/api-docs.json
-
-- 5173 -> Frontend (Nginx, contenedor 80)
-  URL: http://localhost:5173
-
-- 8080 -> phpMyAdmin (contenedor 80)
-  URL: http://localhost:8080
-
-Puertos internos (red Docker):
-
-- MySQL: supplychainpro-db:3306
-- Backend interno: supplychainpro-backend:5000
-- Simulator interno: supplychainpro-simulator:5000
+Nota: `Manual.txt` conserva las **Credenciales de acceso** y las notas de soporte.
 
 
 6) Credenciales de acceso
