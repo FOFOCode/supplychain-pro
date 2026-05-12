@@ -5,12 +5,12 @@ Pequeña guía rápida de instalación y verificación del proyecto usando Docke
 ## Instalación (rápida)
 
 Requisitos previos:
+
 - Docker Desktop (con Docker Compose v2)
 - Git
 - Puertos libres en el host: 5001, 5173 y 8080
 
 1. Revisar y ajustar el archivo `.env` en la raíz del proyecto. Variables clave:
-
    - `DB_HOST` (ej: `supplychainpro-db`)
    - `DB_PORT` (`3306`)
    - `DB_NAME` (`supplychain_db`)
