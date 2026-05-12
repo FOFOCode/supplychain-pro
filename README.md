@@ -1,42 +1,6 @@
-# SupplyChain Pro
-
-Pequeña guía rápida de instalación y verificación del proyecto usando Docker.
-
-## Instalación (rápida)
-
-Requisitos previos:
-
-- Docker Desktop (con Docker Compose v2)
-- Git
-- Puertos libres en el host: 5001, 5173 y 8080
-
-1. Revisar y ajustar el archivo `.env` en la raíz del proyecto. Variables clave:
-   - `DB_HOST` (ej: `supplychainpro-db`)
-   - `DB_PORT` (`3306`)
-   - `DB_NAME` (`supplychain_db`)
-   - `DB_USER` (consultar `Manual.txt` para credenciales de prueba)
-   - `DB_PASSWORD` (consultar `Manual.txt`)
-   - `DB_ROOT_PASSWORD` (consultar `Manual.txt`)
-   - `PORT` (`5000`)
-   - `BACKEND_HOST_PORT` (`5001`)
-   - `PHPMYADMIN_HOST_PORT` (`8080`)
-
-   Nota: Las credenciales de ejemplo y usuarios de prueba están documentadas en `Manual.txt`.
-
-2. Construir imágenes y levantar servicios:
-
-```bash
-docker compose up -d --build
-```
-
-3. Ver estado y logs:
-
-```bash
-docker compose ps
-docker compose logs -f
-```
-
 # SupplyChain Pro — Guía rápida de instalación
+
+![Docker](https://img.shields.io/badge/Docker-ready-2496ED) ![Status](https://img.shields.io/badge/status-ready-brightgreen)
 
 Una guía concisa para levantar el proyecto localmente con Docker. Esta página NO incluye
 credenciales ni datos sensibles — las credenciales de prueba se mantienen en `Manual.txt`.
@@ -46,10 +10,11 @@ credenciales ni datos sensibles — las credenciales de prueba se mantienen en `
 ## Tabla de contenido
 
 - [Requisitos previos](#requisitos-previos)
-- [Arranque rápido (Docker)](#arranque-rápido-docker)
-- [Validaciones rápidas](#validaciones-rápidas)
+- [Arranque rápido (Docker)](#arranque-r%C3%A1pido-docker)
+- [Validaciones rápidas](#validaciones-r%C3%A1pidas)
 - [Puertos expuestos](#puertos-expuestos)
-- [Volúmenes y recreado de datos](#volúmenes-y-recreado-de-datos)
+- [Volúmenes y recreado de datos](#vol%C3%BAmenes-y-recreado-de-datos)
+- [Troubleshooting rápido](#troubleshooting-r%C3%A1pido)
 - [Soporte y notas](#soporte-y-notas)
 
 ---
@@ -83,6 +48,16 @@ docker compose ps
 
 ```bash
 docker compose logs -f
+```
+
+### Comandos útiles (rápido)
+
+Copiar y pegar para levantar desde cero (recomendado en entorno nuevo):
+
+```bash
+git pull origin main
+docker compose down -v
+docker compose up -d --build
 ```
 
 ---
@@ -132,16 +107,21 @@ docker compose up -d --build
 
 ---
 
-## Soporte y notas
+## Troubleshooting rápido
 
-- Las credenciales de prueba, pasos de autenticación en Swagger y notas de soporte se
-   mantienen en `Manual.txt`.
-- Errores comunes:
-   - CORS: verificar `CORS_ORIGINS` en `.env` incluye `http://localhost:5173`.
-   - DB access denied: si cambiaste `DB_PASSWORD` o `DB_ROOT_PASSWORD` y existe un volumen,
-      recrearlo con `docker compose down -v`.
+- Error CORS al abrir la UI: verificar que `CORS_ORIGINS` en `.env` incluye `http://localhost:5173`.
+- Backend no conecta a DB: comprobar `DB_USER`/`DB_PASSWORD`/`DB_NAME` en `.env` y logs del contenedor.
+- Credenciales inválidas en login: si las credenciales no coinciden, recrear la BD de desarrollo o ejecutar los scripts de seed (ver `Manual.txt`).
 
 ---
 
-Si quieres, puedo añadir un pequeño TOC con enlaces de salto o badges (Docker/GH),
-o adaptar el README para que sirva como la página principal del repo en GitHub.
+## Soporte y notas
+
+- Las credenciales de prueba, pasos de autenticación en Swagger y notas de soporte se mantienen en `Manual.txt`.
+- Errores comunes:
+  - CORS: verificar `CORS_ORIGINS` en `.env` incluye `http://localhost:5173`.
+  - DB access denied: si cambiaste `DB_PASSWORD` o `DB_ROOT_PASSWORD` y existe un volumen, recrearlo con `docker compose down -v`.
+
+---
+
+Si quieres, puedo añadir badges dinámicos (CI/Docker Hub) o reemplazar el `frontend/README.md` por un enlace al README raíz.
