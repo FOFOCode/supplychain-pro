@@ -93,16 +93,19 @@ services:
     networks:
       - supplychain-net
 
-  # supplychainpro-frontend:
-  #   # Ejemplo comentado para cuando el frontend este listo
-  #   build: ./frontend
-  #   depends_on:
-  #     - supplychainpro-backend
-  #   ports:
-  #     - "5173:5173"
-  #   restart: unless-stopped
-  #   networks:
-  #     - supplychain-net
+  supplychainpro-frontend:
+    build:
+      context: ./frontend
+      args:
+        VITE_API_BASE: http://localhost:${BACKEND_HOST_PORT:-5001}/api
+    depends_on:
+      supplychainpro-backend:
+        condition: service_started
+    ports:
+      - "5173:80"
+    restart: unless-stopped
+    networks:
+      - supplychain-net
 
 volumes:
   supplychain-db-data:

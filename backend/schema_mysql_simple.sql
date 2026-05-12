@@ -220,4 +220,5 @@ INSERT IGNORE INTO incidentes (id_incidente, id_envio, id_registro_telemetria, t
   (12, 18, 76, 'BATERIA_BAJA', 5.00, 10.00, 'El dispositivo de monitoreo tiene bateria baja', 'SIMULADOR', '{"evento":"bateria_baja","timestamp":"2026-05-04T02:49:49.180Z"}', '2026-05-04 02:49:49');
 
 INSERT IGNORE INTO usuarios (id_usuario, id_rol, nombre_completo, correo, contrasena_hash, activo, fecha_creacion, ultimo_acceso) VALUES
-  (1, 1, 'Admin Inicial', 'admin@local.test', '$2b$10$tUuxl8oHxjau6OD5KBwb8e6Iym2F1A7pdbbphk1Luj5uKwyxuMlRm', 1, '2026-05-03 23:57:00', NULL);
+  (1, 1, 'Admin Inicial', 'admin@local.test', '$2b$10$6NoCzRsPtxM7whJHRgjmJOhOLZdSx7sct3Kz19SUghLER0fZOLI9.', 1, '2026-05-03 23:57:00', NULL),
+  (2, 1, 'Test Admin', 'test@admin.com', '$2b$10$LNoHiCWHsaiYi3QcN.c2yuZFbEvrS5yptNaROZ8jN0DuF/MUTkToy', 1, '2026-05-03 23:58:00', NULL);
