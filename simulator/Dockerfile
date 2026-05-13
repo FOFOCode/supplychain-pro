@@ -16,11 +16,5 @@ RUN npm install --omit=dev
 # Copiar el resto del codigo
 COPY . .
 
-# Crear usuario no-root para ejecutar el simulador
-RUN addgroup -S appgroup && adduser -S appuser -G appgroup
-
-# Usar usuario no-root
-USER appuser
-
 # Comando de arranque del simulador
 CMD ["node", "src/server.js"]

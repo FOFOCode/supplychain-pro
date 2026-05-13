@@ -1,366 +1,310 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
-import './App.css'
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { io } from "socket.io-client";
+import "./App.css";
 
-const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:5000/api'
+const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:5000/api";
+const SOCKET_URL = API_BASE.replace(/\/api\/?$/, "");
+const STREAM_LIMIT = 120;
 
-const VIEWS = [
-  { key: 'dashboard', label: 'Panel' },
-  { key: 'envios', label: 'Envíos' },
-  { key: 'productos', label: 'Productos' },
-  { key: 'vehiculos', label: 'Vehículos' },
-  { key: 'usuarios', label: 'Usuarios' },
-  { key: 'rutas', label: 'Rutas' },
-  { key: 'incidentes', label: 'Incidentes' },
-  { key: 'asignaciones', label: 'Asignaciones' },
-  { key: 'registros', label: 'Telemetría' },
-  { key: 'detalles', label: 'Detalle envío' },
-]
+const EMPTY_LOGIN = {
+  correo: "",
+  contrasena: "",
+};
 
-const EMPTY_FORMS = {
-  envio: {
-    codigo_rastreo: '',
-    origen: '',
-    destino: '',
-    id_ruta: '',
-    temp_max_permitida: '',
-    temp_min_permitida: '',
-  },
-  producto: {
-    codigo_sku: '',
-    nombre: '',
-    descripcion: '',
-  },
-  vehiculo: {
-    placa: '',
-    activo: true,
-  },
-  usuario: {
-    id_rol: '',
-    nombre_completo: '',
-    correo: '',
-    contrasena: '',
-  },
-  ruta: {
-    nombre: '',
-    waypoints_json: '[{"lat":0,"lng":0}]',
-  },
-  incidente: {
-    id_envio: '',
-    tipo_incidente: '',
-    valor_registrado: '',
-    valor_limite: '',
-    descripcion: '',
-  },
-  detalle: {
-    id_envio: '',
-    id_producto: '',
-    cantidad: '',
-    peso_kg: '',
-  },
-  asignacion: {
-    id_envio: '',
-    id_vehiculo: '',
-  },
+function formatClock(value) {
+  if (!value) return "--:--:--";
+  const date = new Date(value);
+  return date.toLocaleTimeString("es-ES", { hour12: false });
 }
 
 function App() {
-  const [view, setView] = useState('dashboard')
-  const [token, setToken] = useState(localStorage.getItem('token') || '')
+  const [token, setToken] = useState(localStorage.getItem("token") || "");
   const [user, setUser] = useState(() => {
-    const stored = localStorage.getItem('supplychain-user')
-    return stored ? JSON.parse(stored) : null
-  })
-  const [loginForm, setLoginForm] = useState({ correo: '', contrasena: '' })
-  const [forms, setForms] = useState(EMPTY_FORMS)
-  const [query, setQuery] = useState({ envioId: '', detallesEnvioId: '', registrosEnvioId: '' })
-  const [data, setData] = useState([])
-  const [summary, setSummary] = useState({})
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState('')
-  const [message, setMessage] = useState('')
+    const stored = localStorage.getItem("supplychain-user");
+    return stored ? JSON.parse(stored) : null;
+  });
+  const [loginForm, setLoginForm] = useState(EMPTY_LOGIN);
+  const [envios, setEnvios] = useState([]);
+  const [rutas, setRutas] = useState([]);
+  const [selectedEnvioId, setSelectedEnvioId] = useState("");
+  const [selectedRutaId, setSelectedRutaId] = useState("");
+  const [speed, setSpeed] = useState(6);
+  const [stream, setStream] = useState([]);
+  const [latestTelemetry, setLatestTelemetry] = useState(null);
+  const [latestIncident, setLatestIncident] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [message, setMessage] = useState("");
 
-  const isAdmin = user?.rol === 'ADMIN'
+  const streamCounter = useRef(0);
+
+  const isAdmin = user?.rol === "ADMIN";
 
   const authHeaders = useMemo(() => {
-    return token ? { Authorization: `Bearer ${token}` } : {}
-  }, [token])
+    return token ? { Authorization: `Bearer ${token}` } : {};
+  }, [token]);
 
-  const fetchApi = useCallback(async (path, options = {}) => {
-    const init = {
-      headers: {
-        'Content-Type': 'application/json',
-        ...authHeaders,
-      },
-      ...options,
-    }
+  const pushEvent = useCallback((type, payload) => {
+    const entry = {
+      id: `${Date.now()}-${streamCounter.current++}`,
+      type,
+      timestamp: new Date().toISOString(),
+      payload,
+    };
+    setStream((prev) => [entry, ...prev].slice(0, STREAM_LIMIT));
+  }, []);
 
-    if (init.body && typeof init.body !== 'string') {
-      init.body = JSON.stringify(init.body)
-    }
+  const fetchApi = useCallback(
+    async (path, options = {}) => {
+      const init = {
+        headers: {
+          "Content-Type": "application/json",
+          ...authHeaders,
+        },
+        ...options,
+      };
 
-    const res = await fetch(`${API_BASE}${path}`, init)
-    const payload = await res.json().catch(() => ({}))
-
-    if (!res.ok) {
-      throw new Error(payload.error || payload.message || res.statusText)
-    }
-
-    return payload
-  }, [authHeaders])
-
-  const loadSummary = useCallback(async () => {
-    setLoading(true)
-    setError('')
-    try {
-      const [envios, productos, vehiculos, usuarios, incidentes, rutas, asignaciones] = await Promise.all([
-        fetchApi('/envios'),
-        fetchApi('/productos'),
-        fetchApi('/vehiculos'),
-        fetchApi('/usuarios'),
-        fetchApi('/incidentes'),
-        fetchApi('/rutas'),
-        fetchApi('/envios-vehiculos'),
-      ])
-
-      setSummary({
-        envios: envios.length,
-        productos: productos.length,
-        vehiculos: vehiculos.length,
-        usuarios: usuarios.length,
-        incidentes: incidentes.length,
-        rutas: rutas.length,
-        asignaciones: asignaciones.length,
-      })
-    } catch (err) {
-      setError(err.message)
-    } finally {
-      setLoading(false)
-    }
-  }, [fetchApi])
-
-  const loadViewData = useCallback(async (viewKey) => {
-    setLoading(true)
-    setError('')
-    setData([])
-    try {
-      let payload = []
-      switch (viewKey) {
-        case 'envios':
-          payload = await fetchApi('/envios')
-          break
-        case 'productos':
-          payload = await fetchApi('/productos')
-          break
-        case 'vehiculos':
-          payload = await fetchApi('/vehiculos')
-          break
-        case 'usuarios':
-          payload = await fetchApi('/usuarios')
-          break
-        case 'rutas':
-          payload = await fetchApi('/rutas')
-          break
-        case 'incidentes':
-          payload = await fetchApi('/incidentes')
-          break
-        case 'asignaciones':
-          payload = await fetchApi('/envios-vehiculos')
-          break
-        default:
-          payload = []
+      if (init.body && typeof init.body !== "string") {
+        init.body = JSON.stringify(init.body);
       }
-      setData(payload)
+
+      const response = await fetch(`${API_BASE}${path}`, init);
+      const payload = await response.json().catch(() => ({}));
+
+      if (!response.ok) {
+        throw new Error(payload.error || payload.message || response.statusText);
+      }
+
+      return payload;
+    },
+    [authHeaders]
+  );
+
+  const loadCatalogs = useCallback(async () => {
+    setLoading(true);
+    setError("");
+    try {
+      const [enviosPayload, rutasPayload] = await Promise.all([
+        fetchApi("/envios"),
+        fetchApi("/rutas"),
+      ]);
+      setEnvios(enviosPayload);
+      setRutas(rutasPayload);
+      if (enviosPayload.length && !selectedEnvioId) {
+        setSelectedEnvioId(String(enviosPayload[0].id_envio));
+      }
     } catch (err) {
-      setError(err.message)
+      setError(err.message);
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }, [fetchApi])
+  }, [fetchApi, selectedEnvioId]);
 
   useEffect(() => {
-    if (token && user) {
-      if (view === 'dashboard') {
-        // eslint-disable-next-line react-hooks/set-state-in-effect
-        loadSummary()
-      } else if (view !== 'registros' && view !== 'detalles') {
-        loadViewData(view)
-      }
+    if (!token || !user) return;
+    loadCatalogs();
+  }, [token, user, loadCatalogs]);
+
+  useEffect(() => {
+    if (!selectedEnvioId) return;
+    const envio = envios.find((item) => String(item.id_envio) === String(selectedEnvioId));
+    if (envio?.id_ruta && String(envio.id_ruta) !== String(selectedRutaId)) {
+      setSelectedRutaId(String(envio.id_ruta));
     }
-  }, [view, token, user, loadSummary, loadViewData])
+  }, [envios, selectedEnvioId, selectedRutaId]);
+
+  useEffect(() => {
+    if (!token) return undefined;
+    const socket = io(SOCKET_URL, {
+      transports: ["websocket"],
+    });
+
+    socket.on("socket:ready", (payload) => {
+      pushEvent("system", { message: "Socket conectado", ...payload });
+    });
+
+    socket.on("telemetry:new", (payload) => {
+      setLatestTelemetry(payload);
+      pushEvent("telemetry", payload);
+    });
+
+    socket.on("incident:new", (payload) => {
+      setLatestIncident(payload);
+      pushEvent("incident", payload);
+    });
+
+    socket.on("connect_error", (err) => {
+      pushEvent("system", { message: "Error de socket", detail: err.message });
+    });
+
+    return () => socket.disconnect();
+  }, [token, pushEvent]);
 
   const handleLogin = async (event) => {
-    event.preventDefault()
-    setLoading(true)
-    setError('')
-    setMessage('')
+    event.preventDefault();
+    setLoading(true);
+    setError("");
+    setMessage("");
 
     try {
-      const payload = await fetch(`${API_BASE}/auth/login`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+      const response = await fetch(`${API_BASE}/auth/login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(loginForm),
-      })
+      });
 
-      const result = await payload.json()
-      if (!payload.ok) throw new Error(result.error || 'No se pudo iniciar sesión')
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || "No se pudo iniciar sesion");
 
-      setToken(result.token)
-      setUser(result.user)
-      localStorage.setItem('token', result.token)
-      localStorage.setItem('supplychain-user', JSON.stringify(result.user))
-      setView('dashboard')
-      setLoginForm({ correo: '', contrasena: '' })
-      setMessage('Sesión iniciada correctamente')
+      setToken(result.token);
+      setUser(result.user);
+      localStorage.setItem("token", result.token);
+      localStorage.setItem("supplychain-user", JSON.stringify(result.user));
+      setLoginForm(EMPTY_LOGIN);
+      setMessage("Sesion iniciada correctamente");
     } catch (err) {
-      setError(err.message)
+      setError(err.message);
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   const handleLogout = () => {
-    setToken('')
-    setUser(null)
-    localStorage.removeItem('token')
-    localStorage.removeItem('supplychain-user')
-    setView('login')
-    setData([])
-    setSummary({})
-    setMessage('Sesión cerrada')
-  }
+    setToken("");
+    setUser(null);
+    localStorage.removeItem("token");
+    localStorage.removeItem("supplychain-user");
+    setStream([]);
+    setLatestTelemetry(null);
+    setLatestIncident(null);
+    setMessage("Sesion cerrada");
+  };
 
-  const handleCreate = async (entity) => {
-    setLoading(true)
-    setError('')
-    setMessage('')
+  const selectedEnvio = envios.find((item) => String(item.id_envio) === String(selectedEnvioId));
+  const selectedRuta = rutas.find((item) => String(item.id_ruta) === String(selectedRutaId));
+
+  const waypoints = useMemo(() => {
+    if (!selectedRuta?.waypoints_json) return null;
     try {
-      let endpoint = ''
-      let payload = forms[entity]
-
-      switch (entity) {
-        case 'envio':
-          endpoint = '/envios'
-          break
-        case 'producto':
-          endpoint = '/productos'
-          break
-        case 'vehiculo':
-          endpoint = '/vehiculos'
-          break
-        case 'usuario':
-          endpoint = '/usuarios'
-          break
-        case 'ruta':
-          endpoint = '/rutas'
-          payload = {
-            nombre: payload.nombre,
-            waypoints_json: payload.waypoints_json,
-          }
-          break
-        case 'incidente':
-          endpoint = '/incidentes'
-          break
-        case 'detalle':
-          endpoint = '/detalles-envio'
-          break
-        case 'asignacion':
-          endpoint = '/envios-vehiculos'
-          break
-        default:
-          throw new Error('Entidad desconocida')
-      }
-
-      await fetchApi(endpoint, { method: 'POST', body: payload })
-      setMessage('Elemento creado correctamente')
-      setForms((prev) => ({
-        ...prev,
-        [entity]: EMPTY_FORMS[entity],
-      }))
-      if (view === entity || view === 'asignaciones') {
-        loadViewData(view)
-      }
+      const parsed = typeof selectedRuta.waypoints_json === "string"
+        ? JSON.parse(selectedRuta.waypoints_json)
+        : selectedRuta.waypoints_json;
+      return Array.isArray(parsed) ? parsed : null;
     } catch (err) {
-      setError(err.message)
-    } finally {
-      setLoading(false)
+      return null;
     }
-  }
+  }, [selectedRuta]);
 
-  const fetchRegistros = async () => {
-    if (!query.registrosEnvioId) {
-      setError('Ingresa un id_envio para ver la telemetría')
-      return
+  const startJourney = async () => {
+    if (!selectedEnvio || !selectedRuta) {
+      setError("Selecciona un envio y una ruta para iniciar el viaje");
+      return;
     }
-    setLoading(true)
-    setError('')
+    if (!waypoints || !waypoints.length) {
+      setError("La ruta seleccionada no tiene waypoints validos");
+      return;
+    }
+    setLoading(true);
+    setError("");
     try {
-      const payload = await fetchApi(`/registros/envio/${query.registrosEnvioId}?limit=100`)
-      setData(payload)
-      setMessage(`Telemetría del envío ${query.registrosEnvioId}`)
+      await fetchApi("/simulator/journeys/start", {
+        method: "POST",
+        body: {
+          id_envio: selectedEnvio.id_envio,
+          id_ruta: selectedRuta.id_ruta,
+          temp_min_permitida: selectedEnvio.temp_min_permitida,
+          temp_max_permitida: selectedEnvio.temp_max_permitida,
+          waypoints,
+        },
+      });
+      setMessage("Viaje iniciado");
+      pushEvent("system", {
+        message: "Viaje iniciado",
+        id_envio: selectedEnvio.id_envio,
+      });
     } catch (err) {
-      setError(err.message)
+      setError(err.message);
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
-  const fetchDetalles = async () => {
-    if (!query.detallesEnvioId) {
-      setError('Ingresa un id_envio para ver los detalles del envío')
-      return
-    }
-    setLoading(true)
-    setError('')
+  const pauseJourney = async () => {
+    if (!selectedEnvio) return;
+    setLoading(true);
+    setError("");
     try {
-      const payload = await fetchApi(`/detalles-envio?envio=${query.detallesEnvioId}`)
-      setData(payload)
-      setMessage(`Detalle de envío ${query.detallesEnvioId}`)
+      await fetchApi(`/simulator/journeys/${selectedEnvio.id_envio}/pause`, {
+        method: "POST",
+      });
+      setMessage("Viaje pausado");
+      pushEvent("system", { message: "Viaje pausado", id_envio: selectedEnvio.id_envio });
     } catch (err) {
-      setError(err.message)
+      setError(err.message);
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
-  const renderTable = (rows) => {
-    if (!rows || !rows.length) {
-      return <p className="empty-state">No hay registros para mostrar.</p>
+  const resumeJourney = async () => {
+    if (!selectedEnvio) return;
+    setLoading(true);
+    setError("");
+    try {
+      await fetchApi(`/simulator/journeys/${selectedEnvio.id_envio}/resume`, {
+        method: "POST",
+      });
+      setMessage("Viaje reanudado");
+      pushEvent("system", { message: "Viaje reanudado", id_envio: selectedEnvio.id_envio });
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
     }
+  };
 
-    const columns = Object.keys(rows[0])
-    return (
-      <div className="table-wrapper">
-        <table>
-          <thead>
-            <tr>
-              {columns.map((column) => (
-                <th key={column}>{column.replace(/_/g, ' ')}</th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((row) => (
-              <tr key={Object.values(row).join('-') + Math.random()}>
-                {columns.map((column) => (
-                  <td key={`${row.id}-${column}`} title={String(row[column] ?? '')}>
-                    {typeof row[column] === 'object'
-                      ? JSON.stringify(row[column])
-                      : String(row[column] ?? '')}
-                  </td>
-                ))}
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    )
-  }
+  const stopJourney = async () => {
+    if (!selectedEnvio) return;
+    setLoading(true);
+    setError("");
+    try {
+      await fetchApi(`/simulator/journeys/${selectedEnvio.id_envio}/stop`, {
+        method: "POST",
+      });
+      setMessage("Viaje detenido");
+      pushEvent("system", { message: "Viaje detenido", id_envio: selectedEnvio.id_envio });
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const triggerIncident = async (path, label) => {
+    if (!selectedEnvio) return;
+    setLoading(true);
+    setError("");
+    try {
+      await fetchApi(`/simulator/incidents/${selectedEnvio.id_envio}/${path}`, {
+        method: "POST",
+      });
+      setMessage(label);
+      pushEvent("system", { message: label, id_envio: selectedEnvio.id_envio });
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const renderLogin = () => (
-    <div className="panel card">
-      <h2>Iniciar sesión</h2>
-      <p>Usa un usuario existente para acceder a las rutas protegidas.</p>
-      <form className="form-grid" onSubmit={handleLogin}>
+    <div className="login-card">
+      <div className="login-header">
+        <p className="kicker">Acceso restringido</p>
+        <h2>Panel de simulacion</h2>
+        <p>Ingresa con un usuario para acceder a los controles del simulador.</p>
+      </div>
+      <form className="login-form" onSubmit={handleLogin}>
         <label>
           Correo
           <input
@@ -371,7 +315,7 @@ function App() {
           />
         </label>
         <label>
-          Contraseña
+          Contrasena
           <input
             type="password"
             value={loginForm.contrasena}
@@ -379,366 +323,272 @@ function App() {
             required
           />
         </label>
-        <button type="submit" className="primary-button" disabled={loading}>
-          {loading ? 'Iniciando...' : 'Ingresar'}
+        <button className="primary-button" type="submit" disabled={loading}>
+          {loading ? "Ingresando..." : "Ingresar"}
         </button>
       </form>
     </div>
-  )
+  );
 
-  const renderActionForm = (entity, fields, legend) => {
-    if (!isAdmin) {
-      return <p className="info-message">Solo los usuarios ADMIN pueden crear registros.</p>
-    }
-
-    return (
-      <div className="card">
-        <h3>{legend}</h3>
-        <div className="form-grid">
-          {fields}
-          <button type="button" className="primary-button" onClick={() => handleCreate(entity)} disabled={loading}>
-            {loading ? 'Guardando...' : 'Guardar'}
-          </button>
-        </div>
-      </div>
-    )
-  }
+  const telemetryStatus = latestTelemetry || {};
 
   return (
     <div className="app-shell">
       <header className="app-header">
         <div className="brand">
-          <strong>SupplyChain Pro</strong>
-          <span>Frontend de administración</span>
+          <span className="brand-kicker">SIMULADOR IOT</span>
+          <strong>Control de Camiones</strong>
         </div>
-        <div className="header-actions">
-          {user ? (
-            <>
-              <span className="user-badge">{user.nombre_completo} • {user.rol}</span>
-              <button type="button" className="secondary-button" onClick={handleLogout}>
-                Cerrar sesión
-              </button>
-            </>
-          ) : null}
-        </div>
+        {token && user ? (
+          <div className="header-actions">
+            <span className="user-chip">
+              {user.nombre_completo} · {user.rol}
+            </span>
+            <button className="ghost-button" type="button" onClick={handleLogout}>
+              Cerrar sesion
+            </button>
+          </div>
+        ) : null}
       </header>
 
-      <div className="app-content">
-        {user ? (
-          <nav className="app-nav">
-            {VIEWS.map((item) => (
-              <button
-                key={item.key}
-                type="button"
-                className={item.key === view ? 'nav-button active' : 'nav-button'}
-                onClick={() => {
-                  setError('')
-                  setMessage('')
-                  setView(item.key)
-                }}
-              >
-                {item.label}
-              </button>
-            ))}
-          </nav>
-        ) : null}
-
-        <main className="app-main">
+      <main className="app-main">
         {error ? <div className="alert error">{error}</div> : null}
         {message ? <div className="alert success">{message}</div> : null}
 
-        {!user ? renderLogin() : null}
-
-        {user && view === 'dashboard' ? (
-          <div className="grid-summary">
-            <div className="card summary-card">
-              <h2>Resumen general</h2>
-              <div className="metric-grid">
-                {[
-                  { label: 'Envíos', value: summary.envios ?? 0 },
-                  { label: 'Productos', value: summary.productos ?? 0 },
-                  { label: 'Vehículos', value: summary.vehiculos ?? 0 },
-                  { label: 'Usuarios', value: summary.usuarios ?? 0 },
-                  { label: 'Incidentes', value: summary.incidentes ?? 0 },
-                  { label: 'Rutas', value: summary.rutas ?? 0 },
-                  { label: 'Asignaciones', value: summary.asignaciones ?? 0 },
-                ].map((item) => (
-                  <div key={item.label} className="metric-card">
-                    <span>{item.label}</span>
-                    <strong>{item.value}</strong>
+        {!token || !user ? (
+          renderLogin()
+        ) : (
+          <section className="simulation-layout">
+            <div className="control-panel">
+              <div className="panel-card diagram-card">
+                <div className="card-title">Virtual Control Transacciones</div>
+                <div className="diagram">
+                  <div className="diagram-row">
+                    <div className="diagram-node">Terminal</div>
+                    <div className="diagram-node">Control</div>
+                    <div className="diagram-node">Cliente</div>
                   </div>
-                ))}
+                  <div className="diagram-row">
+                    <div className="diagram-node">Contratos</div>
+                    <div className="diagram-node">Auditoria</div>
+                  </div>
+                </div>
+                <div className="diagram-caption">Cadena de custodia digital para cada envio</div>
+              </div>
+
+              <div className="panel-card control-card">
+                <div className="card-title">Inyectar recorrido normal</div>
+                <div className="form-row">
+                  <label>
+                    Envio
+                    <select
+                      value={selectedEnvioId}
+                      onChange={(event) => setSelectedEnvioId(event.target.value)}
+                    >
+                      <option value="">Seleccionar</option>
+                      {envios.map((item) => (
+                        <option key={item.id_envio} value={item.id_envio}>
+                          {item.codigo_rastreo || `Envio ${item.id_envio}`}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <label>
+                    Ruta
+                    <select
+                      value={selectedRutaId}
+                      onChange={(event) => setSelectedRutaId(event.target.value)}
+                    >
+                      <option value="">Seleccionar</option>
+                      {rutas.map((item) => (
+                        <option key={item.id_ruta} value={item.id_ruta}>
+                          {item.nombre || `Ruta ${item.id_ruta}`}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                </div>
+
+                <div className="form-row slider-row">
+                  <label>
+                    Velocidad simulada
+                    <input
+                      type="range"
+                      min="1"
+                      max="10"
+                      value={speed}
+                      onChange={(event) => setSpeed(Number(event.target.value))}
+                    />
+                  </label>
+                  <div className="speed-badge">{speed}x</div>
+                </div>
+
+                <div className="button-row">
+                  <button
+                    className="primary-button"
+                    type="button"
+                    disabled={loading || !isAdmin}
+                    onClick={startJourney}
+                  >
+                    Iniciar recorrido
+                  </button>
+                  <button
+                    className="secondary-button"
+                    type="button"
+                    disabled={loading || !isAdmin}
+                    onClick={pauseJourney}
+                  >
+                    Pausar
+                  </button>
+                  <button
+                    className="secondary-button"
+                    type="button"
+                    disabled={loading || !isAdmin}
+                    onClick={resumeJourney}
+                  >
+                    Reanudar
+                  </button>
+                  <button
+                    className="ghost-button"
+                    type="button"
+                    disabled={loading || !isAdmin}
+                    onClick={stopJourney}
+                  >
+                    Detener
+                  </button>
+                </div>
+
+                <div className="meta-grid">
+                  <div>
+                    <span>Temp min</span>
+                    <strong>{selectedEnvio?.temp_min_permitida ?? "--"} C</strong>
+                  </div>
+                  <div>
+                    <span>Temp max</span>
+                    <strong>{selectedEnvio?.temp_max_permitida ?? "--"} C</strong>
+                  </div>
+                  <div>
+                    <span>Origen</span>
+                    <strong>{selectedEnvio?.origen ?? "--"}</strong>
+                  </div>
+                  <div>
+                    <span>Destino</span>
+                    <strong>{selectedEnvio?.destino ?? "--"}</strong>
+                  </div>
+                </div>
+                {!isAdmin ? (
+                  <div className="info-banner">Solo usuarios ADMIN pueden controlar el simulador.</div>
+                ) : null}
+              </div>
+
+              <div className="panel-card incident-card">
+                <div className="card-title">Inyectar rupturas</div>
+                <div className="incident-buttons">
+                  <button
+                    className="danger-button"
+                    type="button"
+                    disabled={loading || !isAdmin}
+                    onClick={() => triggerIncident("temperatura-alta", "Ruptura de cadena de frio")}
+                  >
+                    Ruptura cadena frio
+                  </button>
+                  <button
+                    className="danger-button alt"
+                    type="button"
+                    disabled={loading || !isAdmin}
+                    onClick={() => triggerIncident("geofence-violation", "Desvio de ruta (geofencing)")}
+                  >
+                    Desvio de ruta
+                  </button>
+                  <button
+                    className="danger-button soft"
+                    type="button"
+                    disabled={loading || !isAdmin}
+                    onClick={() => triggerIncident("bateria-baja", "Bateria baja (5%)")}
+                  >
+                    Bateria baja
+                  </button>
+                  <button
+                    className="danger-button soft"
+                    type="button"
+                    disabled={loading || !isAdmin}
+                    onClick={() => triggerIncident("volumen-lleno", "Volumen lleno (100%)")}
+                  >
+                    Volumen lleno
+                  </button>
+                </div>
+              </div>
+
+              <div className="panel-card status-card">
+                <div className="card-title">Estado del viaje</div>
+                <div className="status-grid">
+                  <div>
+                    <span>Temperatura</span>
+                    <strong>{telemetryStatus.temperatura ?? "--"} C</strong>
+                  </div>
+                  <div>
+                    <span>Humedad</span>
+                    <strong>{telemetryStatus.humedad ?? "--"} %</strong>
+                  </div>
+                  <div>
+                    <span>Bateria</span>
+                    <strong>{telemetryStatus.porcentaje_bateria ?? "--"} %</strong>
+                  </div>
+                  <div>
+                    <span>Ubicacion</span>
+                    <strong>
+                      {telemetryStatus.latitud !== undefined && telemetryStatus.longitud !== undefined
+                        ? `${telemetryStatus.latitud}, ${telemetryStatus.longitud}`
+                        : "--"}
+                    </strong>
+                  </div>
+                </div>
+                <div className="status-footer">
+                  <div>
+                    <span>Ultima telemetria</span>
+                    <strong>{formatClock(telemetryStatus.marca_tiempo_dispositivo)}</strong>
+                  </div>
+                  <div>
+                    <span>Ultimo incidente</span>
+                    <strong>{latestIncident?.tipo_incidente || "--"}</strong>
+                  </div>
+                </div>
               </div>
             </div>
-          </div>
-        ) : null}
 
-        {user && view === 'envios' ? (
-          <div className="grid-summary">
-            <div className="card">
-              <h2>Envios</h2>
-              {renderTable(data)}
-            </div>
-            {renderActionForm(
-              'envio',
-              <>
-                <label>
-                  Código de rastreo
-                  <input value={forms.envio.codigo_rastreo} onChange={(e) => setForms({ ...forms, envio: { ...forms.envio, codigo_rastreo: e.target.value } })} />
-                </label>
-                <label>
-                  Origen
-                  <input value={forms.envio.origen} onChange={(e) => setForms({ ...forms, envio: { ...forms.envio, origen: e.target.value } })} />
-                </label>
-                <label>
-                  Destino
-                  <input value={forms.envio.destino} onChange={(e) => setForms({ ...forms, envio: { ...forms.envio, destino: e.target.value } })} />
-                </label>
-                <label>
-                  Ruta (id_ruta)
-                  <input value={forms.envio.id_ruta} onChange={(e) => setForms({ ...forms, envio: { ...forms.envio, id_ruta: e.target.value } })} />
-                </label>
-                <label>
-                  Temperatura máxima
-                  <input type="number" value={forms.envio.temp_max_permitida} onChange={(e) => setForms({ ...forms, envio: { ...forms.envio, temp_max_permitida: e.target.value } })} />
-                </label>
-                <label>
-                  Temperatura mínima
-                  <input type="number" value={forms.envio.temp_min_permitida} onChange={(e) => setForms({ ...forms, envio: { ...forms.envio, temp_min_permitida: e.target.value } })} />
-                </label>
-              </>,
-              'Crear envío'
-            )}
-          </div>
-        ) : null}
-
-        {user && view === 'productos' ? (
-          <div className="grid-summary">
-            <div className="card">
-              <h2>Productos</h2>
-              {renderTable(data)}
-            </div>
-            {renderActionForm(
-              'producto',
-              <>
-                <label>
-                  SKU
-                  <input value={forms.producto.codigo_sku} onChange={(e) => setForms({ ...forms, producto: { ...forms.producto, codigo_sku: e.target.value } })} />
-                </label>
-                <label>
-                  Nombre
-                  <input value={forms.producto.nombre} onChange={(e) => setForms({ ...forms, producto: { ...forms.producto, nombre: e.target.value } })} />
-                </label>
-                <label>
-                  Descripción
-                  <input value={forms.producto.descripcion} onChange={(e) => setForms({ ...forms, producto: { ...forms.producto, descripcion: e.target.value } })} />
-                </label>
-              </>,
-              'Crear producto'
-            )}
-          </div>
-        ) : null}
-
-        {user && view === 'vehiculos' ? (
-          <div className="grid-summary">
-            <div className="card">
-              <h2>Vehículos</h2>
-              {renderTable(data)}
-            </div>
-            {renderActionForm(
-              'vehiculo',
-              <>
-                <label>
-                  Placa
-                  <input value={forms.vehiculo.placa} onChange={(e) => setForms({ ...forms, vehiculo: { ...forms.vehiculo, placa: e.target.value } })} />
-                </label>
-                <label className="checkbox-label">
-                  <span>Activo</span>
-                  <input
-                    type="checkbox"
-                    checked={forms.vehiculo.activo}
-                    onChange={(e) => setForms({ ...forms, vehiculo: { ...forms.vehiculo, activo: e.target.checked } })}
-                  />
-                </label>
-              </>,
-              'Crear vehículo'
-            )}
-          </div>
-        ) : null}
-
-        {user && view === 'usuarios' ? (
-          <div className="grid-summary">
-            <div className="card">
-              <h2>Usuarios</h2>
-              {renderTable(data)}
-            </div>
-            {renderActionForm(
-              'usuario',
-              <>
-                <label>
-                  ID Rol
-                  <input value={forms.usuario.id_rol} onChange={(e) => setForms({ ...forms, usuario: { ...forms.usuario, id_rol: e.target.value } })} />
-                </label>
-                <label>
-                  Nombre completo
-                  <input value={forms.usuario.nombre_completo} onChange={(e) => setForms({ ...forms, usuario: { ...forms.usuario, nombre_completo: e.target.value } })} />
-                </label>
-                <label>
-                  Correo
-                  <input value={forms.usuario.correo} onChange={(e) => setForms({ ...forms, usuario: { ...forms.usuario, correo: e.target.value } })} />
-                </label>
-                <label>
-                  Contraseña
-                  <input type="password" value={forms.usuario.contrasena} onChange={(e) => setForms({ ...forms, usuario: { ...forms.usuario, contrasena: e.target.value } })} />
-                </label>
-              </>,
-              'Crear usuario'
-            )}
-          </div>
-        ) : null}
-
-        {user && view === 'rutas' ? (
-          <div className="grid-summary">
-            <div className="card">
-              <h2>Rutas</h2>
-              {renderTable(data)}
-            </div>
-            {renderActionForm(
-              'ruta',
-              <>
-                <label>
-                  Nombre
-                  <input value={forms.ruta.nombre} onChange={(e) => setForms({ ...forms, ruta: { ...forms.ruta, nombre: e.target.value } })} />
-                </label>
-                <label>
-                  Waypoints JSON
-                  <textarea value={forms.ruta.waypoints_json} onChange={(e) => setForms({ ...forms, ruta: { ...forms.ruta, waypoints_json: e.target.value } })} rows="4" />
-                </label>
-              </>,
-              'Crear ruta'
-            )}
-          </div>
-        ) : null}
-
-        {user && view === 'incidentes' ? (
-          <div className="grid-summary">
-            <div className="card">
-              <h2>Incidentes</h2>
-              {renderTable(data)}
-            </div>
-            {renderActionForm(
-              'incidente',
-              <>
-                <label>
-                  ID Envío
-                  <input value={forms.incidente.id_envio} onChange={(e) => setForms({ ...forms, incidente: { ...forms.incidente, id_envio: e.target.value } })} />
-                </label>
-                <label>
-                  Tipo de incidente
-                  <input value={forms.incidente.tipo_incidente} onChange={(e) => setForms({ ...forms, incidente: { ...forms.incidente, tipo_incidente: e.target.value } })} />
-                </label>
-                <label>
-                  Valor registrado
-                  <input value={forms.incidente.valor_registrado} onChange={(e) => setForms({ ...forms, incidente: { ...forms.incidente, valor_registrado: e.target.value } })} />
-                </label>
-                <label>
-                  Valor límite
-                  <input value={forms.incidente.valor_limite} onChange={(e) => setForms({ ...forms, incidente: { ...forms.incidente, valor_limite: e.target.value } })} />
-                </label>
-                <label>
-                  Descripción
-                  <input value={forms.incidente.descripcion} onChange={(e) => setForms({ ...forms, incidente: { ...forms.incidente, descripcion: e.target.value } })} />
-                </label>
-              </>,
-              'Crear incidente'
-            )}
-          </div>
-        ) : null}
-
-        {user && view === 'asignaciones' ? (
-          <div className="grid-summary">
-            <div className="card">
-              <h2>Asignaciones envío - vehículo</h2>
-              {renderTable(data)}
-            </div>
-            {renderActionForm(
-              'asignacion',
-              <>
-                <label>
-                  ID Envío
-                  <input value={forms.asignacion.id_envio} onChange={(e) => setForms({ ...forms, asignacion: { ...forms.asignacion, id_envio: e.target.value } })} />
-                </label>
-                <label>
-                  ID Vehículo
-                  <input value={forms.asignacion.id_vehiculo} onChange={(e) => setForms({ ...forms, asignacion: { ...forms.asignacion, id_vehiculo: e.target.value } })} />
-                </label>
-              </>,
-              'Crear asignación'
-            )}
-          </div>
-        ) : null}
-
-        {user && view === 'registros' ? (
-          <div className="grid-summary">
-            <div className="card">
-              <h2>Registros de telemetría</h2>
-              <div className="form-grid">
-                <label>
-                  ID Envío
-                  <input value={query.registrosEnvioId} onChange={(e) => setQuery({ ...query, registrosEnvioId: e.target.value })} />
-                </label>
-                <button type="button" className="primary-button" onClick={fetchRegistros} disabled={loading}>
-                  {loading ? 'Buscando...' : 'Buscar registros'}
-                </button>
+            <div className="stream-panel">
+              <div className="panel-card stream-card">
+                <div className="stream-header">
+                  <div>
+                    <div className="card-title">Data Stream</div>
+                    <p>Eventos de telemetria e incidentes en tiempo real.</p>
+                  </div>
+                  <button className="ghost-button" type="button" onClick={() => setStream([])}>
+                    Limpiar
+                  </button>
+                </div>
+                <div className="stream-body">
+                  {stream.length ? (
+                    stream.map((entry) => (
+                      <div key={entry.id} className={`stream-line ${entry.type}`}>
+                        <div className="stream-meta">
+                          <span>{formatClock(entry.timestamp)}</span>
+                          <span className="stream-type">{entry.type}</span>
+                        </div>
+                        <pre className="stream-json">{JSON.stringify(entry.payload)}</pre>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="stream-empty">Esperando eventos del simulador...</div>
+                  )}
+                </div>
               </div>
-              {renderTable(data)}
             </div>
-          </div>
-        ) : null}
-
-        {user && view === 'detalles' ? (
-          <div className="grid-summary">
-            <div className="card">
-              <h2>Detalles de envío</h2>
-              <div className="form-grid">
-                <label>
-                  ID Envío
-                  <input value={query.detallesEnvioId} onChange={(e) => setQuery({ ...query, detallesEnvioId: e.target.value })} />
-                </label>
-                <button type="button" className="primary-button" onClick={fetchDetalles} disabled={loading}>
-                  {loading ? 'Buscando...' : 'Buscar detalles'}
-                </button>
-              </div>
-              {renderTable(data)}
-            </div>
-            {renderActionForm(
-              'detalle',
-              <>
-                <label>
-                  ID Envío
-                  <input value={forms.detalle.id_envio} onChange={(e) => setForms({ ...forms, detalle: { ...forms.detalle, id_envio: e.target.value } })} />
-                </label>
-                <label>
-                  ID Producto
-                  <input value={forms.detalle.id_producto} onChange={(e) => setForms({ ...forms, detalle: { ...forms.detalle, id_producto: e.target.value } })} />
-                </label>
-                <label>
-                  Cantidad
-                  <input type="number" value={forms.detalle.cantidad} onChange={(e) => setForms({ ...forms, detalle: { ...forms.detalle, cantidad: e.target.value } })} />
-                </label>
-                <label>
-                  Peso kg
-                  <input type="number" value={forms.detalle.peso_kg} onChange={(e) => setForms({ ...forms, detalle: { ...forms.detalle, peso_kg: e.target.value } })} />
-                </label>
-              </>,
-              'Crear detalle'
-            )}
-          </div>
-        ) : null}
+          </section>
+        )}
       </main>
-      </div>
     </div>
-  )
+  );
 }
 
-export default App
+export default App;

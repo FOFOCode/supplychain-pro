@@ -7,6 +7,7 @@ const incidentRoutes = require('./routes/incidents');
 
 // Importar controladores
 const incidentController = require('./controllers/incidentController');
+const { restoreJourneys, persistJourneys } = require('./controllers/journeyController');
 
 const app = express();
 const PORT = process.env.SIMULATOR_PORT || 3001;
@@ -50,8 +51,23 @@ async function iniciar() {
 
     // Obtener token de admin
     await incidentController.getAdminToken();
+
+    const restored = restoreJourneys();
+    if (restored) {
+      console.log(`♻ Viajes restaurados: ${restored}`);
+    }
   });
 }
+
+process.on('SIGTERM', () => {
+  persistJourneys();
+  process.exit(0);
+});
+
+process.on('SIGINT', () => {
+  persistJourneys();
+  process.exit(0);
+});
 
 iniciar().catch(error => {
   console.error('Error iniciando simulador:', error);
