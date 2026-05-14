@@ -1,39 +1,42 @@
-require('dotenv').config();
-const express = require('express');
+require("dotenv").config();
+const express = require("express");
 
 // Importar rutas
-const journeyRoutes = require('./routes/journeys');
-const incidentRoutes = require('./routes/incidents');
+const journeyRoutes = require("./routes/journeys");
+const incidentRoutes = require("./routes/incidents");
 
 // Importar controladores
-const incidentController = require('./controllers/incidentController');
-const { restoreJourneys, persistJourneys } = require('./controllers/journeyController');
+const incidentController = require("./controllers/incidentController");
+const {
+  restoreJourneys,
+  persistJourneys,
+} = require("./controllers/journeyController");
 
 const app = express();
 const PORT = process.env.SIMULATOR_PORT || 3001;
-const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:3000';
+const BACKEND_URL = process.env.BACKEND_URL || "http://localhost:3000";
 
 // Middleware
 app.use(express.json());
 
 // Rutas
-app.get('/', (req, res) => {
+app.get("/", (req, res) => {
   res.json({
     ok: true,
-    service: 'SupplyChain Pro - Simulador de Camión',
+    service: "SupplyChain Pro - Simulador de Camión",
     port: PORT,
-    version: '1.0.0'
+    version: "1.0.0",
   });
 });
 
-app.use('/api/simulator/journeys', journeyRoutes);
-app.use('/api/simulator/incidents', incidentRoutes);
+app.use("/api/simulator/journeys", journeyRoutes);
+app.use("/api/simulator/incidents", incidentRoutes);
 
 // Health check
-app.get('/api/simulator/health', (req, res) => {
+app.get("/api/simulator/health", (req, res) => {
   res.json({
-    status: 'ok',
-    timestamp: new Date().toISOString()
+    status: "ok",
+    timestamp: new Date().toISOString(),
   });
 });
 
@@ -59,17 +62,17 @@ async function iniciar() {
   });
 }
 
-process.on('SIGTERM', () => {
+process.on("SIGTERM", () => {
   persistJourneys();
   process.exit(0);
 });
 
-process.on('SIGINT', () => {
+process.on("SIGINT", () => {
   persistJourneys();
   process.exit(0);
 });
 
-iniciar().catch(error => {
-  console.error('Error iniciando simulador:', error);
+iniciar().catch((error) => {
+  console.error("Error iniciando simulador:", error);
   process.exit(1);
 });

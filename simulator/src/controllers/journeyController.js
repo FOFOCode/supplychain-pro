@@ -2,12 +2,16 @@
  * Controlador de viajes
  */
 
-const axios = require('axios');
-const { calcularDistancia, interpolarPunto, randomBetween } = require('../utils/calculations');
-const { generarTelemetria } = require('../utils/telemetry');
-const { readState, writeState } = require('../utils/stateStore');
+const axios = require("axios");
+const {
+  calcularDistancia,
+  interpolarPunto,
+  randomBetween,
+} = require("../utils/calculations");
+const { generarTelemetria } = require("../utils/telemetry");
+const { readState, writeState } = require("../utils/stateStore");
 
-const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:3000';
+const BACKEND_URL = process.env.BACKEND_URL || "http://localhost:3000";
 const TELEMETRY_INTERVAL = 5000;
 
 // Estado global de viajes
@@ -55,7 +59,7 @@ function restoreJourneys() {
   });
 
   stored.journeys.forEach((journey) => {
-    if (journey.estado === 'EN_PROGRESO') {
+    if (journey.estado === "EN_PROGRESO") {
       const restored = activeJourneys.get(journey.id_envio);
       const elapsed = Number.isFinite(restored.elapsedSeconds)
         ? restored.elapsedSeconds
@@ -80,7 +84,7 @@ async function enviarTelemetria(id_envio, posicion, telemetria, timestamp) {
       temperatura: telemetria.temperatura,
       humedad: telemetria.humedad,
       porcentaje_bateria: Math.round(telemetria.porcentaje_bateria),
-      marca_tiempo_dispositivo: new Date(timestamp).toISOString()
+      marca_tiempo_dispositivo: new Date(timestamp).toISOString(),
     };
 
     const response = await axios.post(`${BACKEND_URL}/api/registros`, payload);
@@ -92,7 +96,7 @@ async function enviarTelemetria(id_envio, posicion, telemetria, timestamp) {
     }
 
     console.log(
-      `📊 Telemetría enviada (${id_envio}): Temp=${telemetria.temperatura.toFixed(2)}°C, Bateria=${telemetria.porcentaje_bateria.toFixed(0)}%`
+      `📊 Telemetría enviada (${id_envio}): Temp=${telemetria.temperatura.toFixed(2)}°C, Bateria=${telemetria.porcentaje_bateria.toFixed(0)}%`,
     );
 
     return response.data;
@@ -131,15 +135,23 @@ function iniciarTelemetria(id_envio) {
         journey.waypoints[i].lat,
         journey.waypoints[i].lng,
         journey.waypoints[i + 1].lat,
-        journey.waypoints[i + 1].lng
+        journey.waypoints[i + 1].lng,
       );
 
       if (distanciaRestante <= distancia) {
         _waypointActual = i;
         const interpolacion = distanciaRestante / distancia;
-        const posicion = interpolarPunto(journey.waypoints[i], journey.waypoints[i + 1], interpolacion);
+        const posicion = interpolarPunto(
+          journey.waypoints[i],
+          journey.waypoints[i + 1],
+          interpolacion,
+        );
 
-        journey.telemetria = generarTelemetria(journey.telemetria, journey.tempMin, journey.tempMax);
+        journey.telemetria = generarTelemetria(
+          journey.telemetria,
+          journey.tempMin,
+          journey.tempMax,
+        );
         journey.elapsedSeconds = tiempoTranscurrido;
 
         // Enviar telemetría al backend
@@ -152,7 +164,7 @@ function iniciarTelemetria(id_envio) {
     }
   }, TELEMETRY_INTERVAL);
 
-  console.log('  ✓ Sistema de telemetría iniciado');
+  console.log("  ✓ Sistema de telemetría iniciado");
 }
 
 /**
@@ -166,7 +178,7 @@ function finalizarViaje(id_envio) {
     clearInterval(journey.telemetryInterval);
   }
 
-  journey.estado = 'FINALIZADO';
+  journey.estado = "FINALIZADO";
   journey.elapsedSeconds = journey.duracionTotal;
   persistJourneys();
   console.log(`\n✓ Viaje finalizado para envío ${id_envio}`);
@@ -190,7 +202,7 @@ async function iniciarViaje(id_envio, id_ruta, tempMin, tempMax, waypoints) {
       waypoints[i].lat,
       waypoints[i].lng,
       waypoints[i + 1].lat,
-      waypoints[i + 1].lng
+      waypoints[i + 1].lng,
     );
   }
 
@@ -198,13 +210,19 @@ async function iniciarViaje(id_envio, id_ruta, tempMin, tempMax, waypoints) {
   const duracionTotalSegundos = distanciaTotal / velocidadMetrosPorSegundo;
 
   console.log(`  - Distancia total: ${(distanciaTotal / 1000).toFixed(2)} km`);
-  console.log(`  - Duración estimada: ${duracionTotalSegundos.toFixed(1)} segundos`);
-  console.log(`  - Velocidad: ${(velocidadMetrosPorSegundo * 3.6).toFixed(1)} km/h`);
+  console.log(
+    `  - Duración estimada: ${duracionTotalSegundos.toFixed(1)} segundos`,
+  );
+  console.log(
+    `  - Velocidad: ${(velocidadMetrosPorSegundo * 3.6).toFixed(1)} km/h`,
+  );
 
   const tempMinValue = Number(tempMin);
   const tempMaxValue = Number(tempMax);
   const normalizedTempMin = Number.isFinite(tempMinValue) ? tempMinValue : 0;
-  const normalizedTempMax = Number.isFinite(tempMaxValue) ? tempMaxValue : Math.max(5, normalizedTempMin + 1);
+  const normalizedTempMax = Number.isFinite(tempMaxValue)
+    ? tempMaxValue
+    : Math.max(5, normalizedTempMin + 1);
 
   const journeyState = {
     id_envio,
@@ -212,7 +230,7 @@ async function iniciarViaje(id_envio, id_ruta, tempMin, tempMax, waypoints) {
     waypoints,
     tempMin: normalizedTempMin,
     tempMax: normalizedTempMax,
-    estado: 'EN_PROGRESO',
+    estado: "EN_PROGRESO",
     startTime: Date.now(),
     duracionTotal: duracionTotalSegundos,
     velocidadMetrosPorSegundo,
@@ -220,13 +238,13 @@ async function iniciarViaje(id_envio, id_ruta, tempMin, tempMax, waypoints) {
     telemetria: {
       temperatura: randomBetween(normalizedTempMin, normalizedTempMax),
       humedad: randomBetween(60, 75),
-      porcentaje_bateria: 100
+      porcentaje_bateria: 100,
     },
     telemetryInterval: null,
     incidentes: [],
     distanciaRecorrida: 0,
     ultimoIdRegistroTelemetria: null,
-    elapsedSeconds: 0
+    elapsedSeconds: 0,
   };
 
   activeJourneys.set(id_envio, journeyState);
@@ -241,5 +259,5 @@ module.exports = {
   iniciarTelemetria,
   enviarTelemetria,
   persistJourneys,
-  restoreJourneys
+  restoreJourneys,
 };
