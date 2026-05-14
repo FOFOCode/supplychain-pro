@@ -5,12 +5,68 @@
 const axios = require('axios');
 const { calcularDistancia, interpolarPunto, randomBetween } = require('../utils/calculations');
 const { generarTelemetria } = require('../utils/telemetry');
+const { readState, writeState } = require('../utils/stateStore');
 
 const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:3000';
 const TELEMETRY_INTERVAL = 5000;
 
 // Estado global de viajes
 const activeJourneys = new Map();
+
+function serializeJourney(journey) {
+  return {
+    id_envio: journey.id_envio,
+    id_ruta: journey.id_ruta,
+    waypoints: journey.waypoints,
+    tempMin: journey.tempMin,
+    tempMax: journey.tempMax,
+    estado: journey.estado,
+    startTime: journey.startTime,
+    pausedTime: journey.pausedTime || null,
+    duracionTotal: journey.duracionTotal,
+    velocidadMetrosPorSegundo: journey.velocidadMetrosPorSegundo,
+    distanciaTotal: journey.distanciaTotal,
+    telemetria: journey.telemetria,
+    incidentes: journey.incidentes,
+    distanciaRecorrida: journey.distanciaRecorrida,
+    ultimoIdRegistroTelemetria: journey.ultimoIdRegistroTelemetria,
+    elapsedSeconds: journey.elapsedSeconds || 0,
+  };
+}
+
+function persistJourneys() {
+  const payload = {
+    updatedAt: new Date().toISOString(),
+    journeys: Array.from(activeJourneys.values()).map(serializeJourney),
+  };
+  writeState(payload);
+}
+
+function restoreJourneys() {
+  const stored = readState();
+  if (!stored || !Array.isArray(stored.journeys)) return 0;
+
+  stored.journeys.forEach((journey) => {
+    const restored = {
+      ...journey,
+      telemetryInterval: null,
+    };
+    activeJourneys.set(restored.id_envio, restored);
+  });
+
+  stored.journeys.forEach((journey) => {
+    if (journey.estado === 'EN_PROGRESO') {
+      const restored = activeJourneys.get(journey.id_envio);
+      const elapsed = Number.isFinite(restored.elapsedSeconds)
+        ? restored.elapsedSeconds
+        : Math.max(0, (Date.now() - restored.startTime) / 1000);
+      restored.startTime = Date.now() - elapsed * 1000;
+      iniciarTelemetria(restored.id_envio);
+    }
+  });
+
+  return stored.journeys.length;
+}
 
 /**
  * Envía telemetría al backend
@@ -84,9 +140,11 @@ function iniciarTelemetria(id_envio) {
         const posicion = interpolarPunto(journey.waypoints[i], journey.waypoints[i + 1], interpolacion);
 
         journey.telemetria = generarTelemetria(journey.telemetria, journey.tempMin, journey.tempMax);
+        journey.elapsedSeconds = tiempoTranscurrido;
 
         // Enviar telemetría al backend
         await enviarTelemetria(id_envio, posicion, journey.telemetria, ahora);
+        persistJourneys();
         break;
       }
 
@@ -109,6 +167,8 @@ function finalizarViaje(id_envio) {
   }
 
   journey.estado = 'FINALIZADO';
+  journey.elapsedSeconds = journey.duracionTotal;
+  persistJourneys();
   console.log(`\n✓ Viaje finalizado para envío ${id_envio}`);
 }
 
@@ -141,29 +201,36 @@ async function iniciarViaje(id_envio, id_ruta, tempMin, tempMax, waypoints) {
   console.log(`  - Duración estimada: ${duracionTotalSegundos.toFixed(1)} segundos`);
   console.log(`  - Velocidad: ${(velocidadMetrosPorSegundo * 3.6).toFixed(1)} km/h`);
 
+  const tempMinValue = Number(tempMin);
+  const tempMaxValue = Number(tempMax);
+  const normalizedTempMin = Number.isFinite(tempMinValue) ? tempMinValue : 0;
+  const normalizedTempMax = Number.isFinite(tempMaxValue) ? tempMaxValue : Math.max(5, normalizedTempMin + 1);
+
   const journeyState = {
     id_envio,
     id_ruta,
     waypoints,
-    tempMin,
-    tempMax,
+    tempMin: normalizedTempMin,
+    tempMax: normalizedTempMax,
     estado: 'EN_PROGRESO',
     startTime: Date.now(),
     duracionTotal: duracionTotalSegundos,
     velocidadMetrosPorSegundo,
     distanciaTotal,
     telemetria: {
-      temperatura: randomBetween(tempMin, tempMax),
+      temperatura: randomBetween(normalizedTempMin, normalizedTempMax),
       humedad: randomBetween(60, 75),
       porcentaje_bateria: 100
     },
     telemetryInterval: null,
     incidentes: [],
     distanciaRecorrida: 0,
-    ultimoIdRegistroTelemetria: null
+    ultimoIdRegistroTelemetria: null,
+    elapsedSeconds: 0
   };
 
   activeJourneys.set(id_envio, journeyState);
+  persistJourneys();
   iniciarTelemetria(id_envio);
 }
 
@@ -172,5 +239,7 @@ module.exports = {
   iniciarViaje,
   finalizarViaje,
   iniciarTelemetria,
-  enviarTelemetria
+  enviarTelemetria,
+  persistJourneys,
+  restoreJourneys
 };
