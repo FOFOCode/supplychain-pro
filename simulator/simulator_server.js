@@ -189,8 +189,6 @@ function iniciarTelemetria(id_envio) {
     }
 
     // Calcular posición actual
-    let _distanciaRecorrida = 0;
-    let _waypointActual = 0;
     let distanciaRestante = progreso * journey.distanciaTotal;
 
     for (let i = 0; i < journey.waypoints.length - 1; i++) {
@@ -202,7 +200,6 @@ function iniciarTelemetria(id_envio) {
       );
 
       if (distanciaRestante <= distancia) {
-        _waypointActual = i;
         const interpolacion = distanciaRestante / distancia;
         const posicion = interpolarPunto(
           journey.waypoints[i],

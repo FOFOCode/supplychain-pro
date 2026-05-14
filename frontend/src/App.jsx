@@ -190,7 +190,7 @@ function App() {
         ? JSON.parse(selectedRuta.waypoints_json)
         : selectedRuta.waypoints_json;
       return Array.isArray(parsed) ? parsed : null;
-    } catch (err) {
+    } catch {
       return null;
     }
   }, [selectedRuta]);

@@ -41,8 +41,9 @@ app.get("/api/simulator/health", (req, res) => {
 });
 
 // Manejo de errores
-app.use((err, req, res, _next) => {
+app.use((err, req, res, next) => {
   console.error(err);
+  void next;
   res.status(500).json({ error: err.message });
 });
 
