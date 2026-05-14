@@ -218,10 +218,7 @@ async function iniciarViaje(id_envio, id_ruta, waypoints) {
       waypoints,
     };
 
-    await axios.post(
-      `${SIMULATOR_URL}/api/simulator/journeys/start`,
-      payload,
-    );
+    await axios.post(`${SIMULATOR_URL}/api/simulator/journeys/start`, payload);
     log(colors.green, `✓ Viaje iniciado para envío ${id_envio}`);
     return true;
   } catch (error) {

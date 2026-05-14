@@ -72,12 +72,14 @@ function App() {
       const payload = await response.json().catch(() => ({}));
 
       if (!response.ok) {
-        throw new Error(payload.error || payload.message || response.statusText);
+        throw new Error(
+          payload.error || payload.message || response.statusText,
+        );
       }
 
       return payload;
     },
-    [authHeaders]
+    [authHeaders],
   );
 
   const loadCatalogs = useCallback(async () => {
@@ -107,7 +109,9 @@ function App() {
 
   useEffect(() => {
     if (!selectedEnvioId) return;
-    const envio = envios.find((item) => String(item.id_envio) === String(selectedEnvioId));
+    const envio = envios.find(
+      (item) => String(item.id_envio) === String(selectedEnvioId),
+    );
     if (envio?.id_ruta && String(envio.id_ruta) !== String(selectedRutaId)) {
       setSelectedRutaId(String(envio.id_ruta));
     }
@@ -154,7 +158,8 @@ function App() {
       });
 
       const result = await response.json();
-      if (!response.ok) throw new Error(result.error || "No se pudo iniciar sesion");
+      if (!response.ok)
+        throw new Error(result.error || "No se pudo iniciar sesion");
 
       setToken(result.token);
       setUser(result.user);
@@ -180,15 +185,20 @@ function App() {
     setMessage("Sesion cerrada");
   };
 
-  const selectedEnvio = envios.find((item) => String(item.id_envio) === String(selectedEnvioId));
-  const selectedRuta = rutas.find((item) => String(item.id_ruta) === String(selectedRutaId));
+  const selectedEnvio = envios.find(
+    (item) => String(item.id_envio) === String(selectedEnvioId),
+  );
+  const selectedRuta = rutas.find(
+    (item) => String(item.id_ruta) === String(selectedRutaId),
+  );
 
   const waypoints = useMemo(() => {
     if (!selectedRuta?.waypoints_json) return null;
     try {
-      const parsed = typeof selectedRuta.waypoints_json === "string"
-        ? JSON.parse(selectedRuta.waypoints_json)
-        : selectedRuta.waypoints_json;
+      const parsed =
+        typeof selectedRuta.waypoints_json === "string"
+          ? JSON.parse(selectedRuta.waypoints_json)
+          : selectedRuta.waypoints_json;
       return Array.isArray(parsed) ? parsed : null;
     } catch {
       return null;
@@ -238,7 +248,10 @@ function App() {
         method: "POST",
       });
       setMessage("Viaje pausado");
-      pushEvent("system", { message: "Viaje pausado", id_envio: selectedEnvio.id_envio });
+      pushEvent("system", {
+        message: "Viaje pausado",
+        id_envio: selectedEnvio.id_envio,
+      });
     } catch (err) {
       setError(err.message);
     } finally {
@@ -255,7 +268,10 @@ function App() {
         method: "POST",
       });
       setMessage("Viaje reanudado");
-      pushEvent("system", { message: "Viaje reanudado", id_envio: selectedEnvio.id_envio });
+      pushEvent("system", {
+        message: "Viaje reanudado",
+        id_envio: selectedEnvio.id_envio,
+      });
     } catch (err) {
       setError(err.message);
     } finally {
@@ -272,7 +288,10 @@ function App() {
         method: "POST",
       });
       setMessage("Viaje detenido");
-      pushEvent("system", { message: "Viaje detenido", id_envio: selectedEnvio.id_envio });
+      pushEvent("system", {
+        message: "Viaje detenido",
+        id_envio: selectedEnvio.id_envio,
+      });
     } catch (err) {
       setError(err.message);
     } finally {
@@ -302,7 +321,9 @@ function App() {
       <div className="login-header">
         <p className="kicker">Acceso restringido</p>
         <h2>Panel de simulacion</h2>
-        <p>Ingresa con un usuario para acceder a los controles del simulador.</p>
+        <p>
+          Ingresa con un usuario para acceder a los controles del simulador.
+        </p>
       </div>
       <form className="login-form" onSubmit={handleLogin}>
         <label>
@@ -310,7 +331,9 @@ function App() {
           <input
             type="email"
             value={loginForm.correo}
-            onChange={(event) => setLoginForm({ ...loginForm, correo: event.target.value })}
+            onChange={(event) =>
+              setLoginForm({ ...loginForm, correo: event.target.value })
+            }
             required
           />
         </label>
@@ -319,7 +342,9 @@ function App() {
           <input
             type="password"
             value={loginForm.contrasena}
-            onChange={(event) => setLoginForm({ ...loginForm, contrasena: event.target.value })}
+            onChange={(event) =>
+              setLoginForm({ ...loginForm, contrasena: event.target.value })
+            }
             required
           />
         </label>
@@ -344,7 +369,11 @@ function App() {
             <span className="user-chip">
               {user.nombre_completo} · {user.rol}
             </span>
-            <button className="ghost-button" type="button" onClick={handleLogout}>
+            <button
+              className="ghost-button"
+              type="button"
+              onClick={handleLogout}
+            >
               Cerrar sesion
             </button>
           </div>
@@ -373,7 +402,9 @@ function App() {
                     <div className="diagram-node">Auditoria</div>
                   </div>
                 </div>
-                <div className="diagram-caption">Cadena de custodia digital para cada envio</div>
+                <div className="diagram-caption">
+                  Cadena de custodia digital para cada envio
+                </div>
               </div>
 
               <div className="panel-card control-card">
@@ -383,7 +414,9 @@ function App() {
                     Envio
                     <select
                       value={selectedEnvioId}
-                      onChange={(event) => setSelectedEnvioId(event.target.value)}
+                      onChange={(event) =>
+                        setSelectedEnvioId(event.target.value)
+                      }
                     >
                       <option value="">Seleccionar</option>
                       {envios.map((item) => (
@@ -397,7 +430,9 @@ function App() {
                     Ruta
                     <select
                       value={selectedRutaId}
-                      onChange={(event) => setSelectedRutaId(event.target.value)}
+                      onChange={(event) =>
+                        setSelectedRutaId(event.target.value)
+                      }
                     >
                       <option value="">Seleccionar</option>
                       {rutas.map((item) => (
@@ -461,11 +496,15 @@ function App() {
                 <div className="meta-grid">
                   <div>
                     <span>Temp min</span>
-                    <strong>{selectedEnvio?.temp_min_permitida ?? "--"} C</strong>
+                    <strong>
+                      {selectedEnvio?.temp_min_permitida ?? "--"} C
+                    </strong>
                   </div>
                   <div>
                     <span>Temp max</span>
-                    <strong>{selectedEnvio?.temp_max_permitida ?? "--"} C</strong>
+                    <strong>
+                      {selectedEnvio?.temp_max_permitida ?? "--"} C
+                    </strong>
                   </div>
                   <div>
                     <span>Origen</span>
@@ -477,7 +516,9 @@ function App() {
                   </div>
                 </div>
                 {!isAdmin ? (
-                  <div className="info-banner">Solo usuarios ADMIN pueden controlar el simulador.</div>
+                  <div className="info-banner">
+                    Solo usuarios ADMIN pueden controlar el simulador.
+                  </div>
                 ) : null}
               </div>
 
@@ -488,7 +529,12 @@ function App() {
                     className="danger-button"
                     type="button"
                     disabled={loading || !isAdmin}
-                    onClick={() => triggerIncident("temperatura-alta", "Ruptura de cadena de frio")}
+                    onClick={() =>
+                      triggerIncident(
+                        "temperatura-alta",
+                        "Ruptura de cadena de frio",
+                      )
+                    }
                   >
                     Ruptura cadena frio
                   </button>
@@ -496,7 +542,12 @@ function App() {
                     className="danger-button alt"
                     type="button"
                     disabled={loading || !isAdmin}
-                    onClick={() => triggerIncident("geofence-violation", "Desvio de ruta (geofencing)")}
+                    onClick={() =>
+                      triggerIncident(
+                        "geofence-violation",
+                        "Desvio de ruta (geofencing)",
+                      )
+                    }
                   >
                     Desvio de ruta
                   </button>
@@ -504,7 +555,9 @@ function App() {
                     className="danger-button soft"
                     type="button"
                     disabled={loading || !isAdmin}
-                    onClick={() => triggerIncident("bateria-baja", "Bateria baja (5%)")}
+                    onClick={() =>
+                      triggerIncident("bateria-baja", "Bateria baja (5%)")
+                    }
                   >
                     Bateria baja
                   </button>
@@ -512,7 +565,9 @@ function App() {
                     className="danger-button soft"
                     type="button"
                     disabled={loading || !isAdmin}
-                    onClick={() => triggerIncident("volumen-lleno", "Volumen lleno (100%)")}
+                    onClick={() =>
+                      triggerIncident("volumen-lleno", "Volumen lleno (100%)")
+                    }
                   >
                     Volumen lleno
                   </button>
@@ -532,12 +587,15 @@ function App() {
                   </div>
                   <div>
                     <span>Bateria</span>
-                    <strong>{telemetryStatus.porcentaje_bateria ?? "--"} %</strong>
+                    <strong>
+                      {telemetryStatus.porcentaje_bateria ?? "--"} %
+                    </strong>
                   </div>
                   <div>
                     <span>Ubicacion</span>
                     <strong>
-                      {telemetryStatus.latitud !== undefined && telemetryStatus.longitud !== undefined
+                      {telemetryStatus.latitud !== undefined &&
+                      telemetryStatus.longitud !== undefined
                         ? `${telemetryStatus.latitud}, ${telemetryStatus.longitud}`
                         : "--"}
                     </strong>
@@ -546,7 +604,9 @@ function App() {
                 <div className="status-footer">
                   <div>
                     <span>Ultima telemetria</span>
-                    <strong>{formatClock(telemetryStatus.marca_tiempo_dispositivo)}</strong>
+                    <strong>
+                      {formatClock(telemetryStatus.marca_tiempo_dispositivo)}
+                    </strong>
                   </div>
                   <div>
                     <span>Ultimo incidente</span>
@@ -563,23 +623,34 @@ function App() {
                     <div className="card-title">Data Stream</div>
                     <p>Eventos de telemetria e incidentes en tiempo real.</p>
                   </div>
-                  <button className="ghost-button" type="button" onClick={() => setStream([])}>
+                  <button
+                    className="ghost-button"
+                    type="button"
+                    onClick={() => setStream([])}
+                  >
                     Limpiar
                   </button>
                 </div>
                 <div className="stream-body">
                   {stream.length ? (
                     stream.map((entry) => (
-                      <div key={entry.id} className={`stream-line ${entry.type}`}>
+                      <div
+                        key={entry.id}
+                        className={`stream-line ${entry.type}`}
+                      >
                         <div className="stream-meta">
                           <span>{formatClock(entry.timestamp)}</span>
                           <span className="stream-type">{entry.type}</span>
                         </div>
-                        <pre className="stream-json">{JSON.stringify(entry.payload)}</pre>
+                        <pre className="stream-json">
+                          {JSON.stringify(entry.payload)}
+                        </pre>
                       </div>
                     ))
                   ) : (
-                    <div className="stream-empty">Esperando eventos del simulador...</div>
+                    <div className="stream-empty">
+                      Esperando eventos del simulador...
+                    </div>
                   )}
                 </div>
               </div>
