@@ -1,4 +1,5 @@
 require("dotenv").config(); //Cargar variables d entorno
+const http = require("http");
 const express = require("express"); //Crear servidor web
 const cors = require("cors"); //Para permitir solicitudes desde otro dominio
 const swaggerUi = require("swagger-ui-express");
@@ -16,6 +17,8 @@ const detallesEnvioRoutes = require("./routes/detallesEnvio");
 const rolesRoutes = require("./routes/roles");
 const usuariosRoutes = require("./routes/usuarios");
 const rutasRoutes = require("./routes/rutas");
+const simulatorRoutes = require("./routes/simulator");
+const { initSocket } = require("./socket");
 
 const app = express(); //Instancia del servidor
 const allowedOrigins = (
@@ -75,6 +78,7 @@ app.use("/api/detalles-envio", detallesEnvioRoutes);
 app.use("/api/roles", rolesRoutes);
 app.use("/api/usuarios", usuariosRoutes);
 app.use("/api/rutas", rutasRoutes);
+app.use("/api/simulator", simulatorRoutes);
 
 const verifyDbConnection = async () => {
   try {
@@ -146,7 +150,10 @@ app.get("/health/db", async (req, res) => {
 
 // Iniciar servidor
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, async () => {
+const server = http.createServer(app);
+initSocket(server, allowedOrigins);
+
+server.listen(PORT, async () => {
   console.log(`Servidor backend corriendo en el puerto ${PORT}`);
   console.log(`Swagger UI disponible en /api-docs`);
   await verifyDbConnection();

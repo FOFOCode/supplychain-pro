@@ -10,8 +10,8 @@ WORKDIR /app
 # Copiar manifests primero para cache de capas
 COPY package*.json ./
 
-# Instalar solo dependencias de produccion
-RUN npm install --omit=dev
+# Instalar solo dependencias de produccion de forma reproducible
+RUN npm ci --omit=dev
 
 # Copiar el resto del codigo
 COPY . .
