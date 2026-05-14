@@ -10,7 +10,7 @@ exports.authenticate = (req, res, next) => {
     const payload = jwt.verify(token, process.env.JWT_SECRET || 'change_this_secret');
     req.user = payload;
     next();
-  } catch (err) {
+  } catch (_) {
     return res.status(401).json({ error: 'Token inválido o expirado' });
   }
 };

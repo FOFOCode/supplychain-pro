@@ -27,7 +27,7 @@ function log(color, message) {
  */
 async function verificarSimulador() {
   try {
-    const response = await axios.get(`${SIMULATOR_URL}/api/simulator/health`);
+    await axios.get(`${SIMULATOR_URL}/api/simulator/health`);
     log(colors.green, '✓ Simulador en línea');
     return true;
   } catch (error) {
@@ -195,7 +195,7 @@ async function iniciarViaje(id_envio, id_ruta, waypoints) {
       waypoints
     };
 
-    const response = await axios.post(`${SIMULATOR_URL}/api/simulator/journeys/start`, payload);
+    const _response = await axios.post(`${SIMULATOR_URL}/api/simulator/journeys/start`, payload);
     log(colors.green, `✓ Viaje iniciado para envío ${id_envio}`);
     return true;
   } catch (error) {
@@ -337,7 +337,7 @@ async function flujoCompleto() {
 
   for (let i = 0; i < 6; i++) {
     await new Promise(resolve => setTimeout(resolve, 5000)); // Esperar 5 segundos
-    const estado = await obtenerEstadoViaje(id_envio);
+    await obtenerEstadoViaje(id_envio);
 
     // Crear incidente a mitad del viaje
     if (i === 2) {

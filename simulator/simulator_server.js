@@ -175,7 +175,7 @@ function iniciarTelemetria(id_envio) {
     }
 
     // Calcular posición actual
-    let distanciaRecorrida = 0;
+    let _distanciaRecorrida = 0;
     let waypointActual = 0;
     let distanciaRestante = progreso * journey.distanciaTotal;
 
