@@ -93,6 +93,26 @@ CREATE TABLE incidentes (
 
 CREATE INDEX idx_incidentes_envio_fecha ON incidentes (id_envio, fecha_creacion DESC);
 
+DELIMITER //
+
+CREATE TRIGGER trg_incidentes_no_update
+BEFORE UPDATE ON incidentes
+FOR EACH ROW
+BEGIN
+  SIGNAL SQLSTATE '45000'
+    SET MESSAGE_TEXT = 'Los incidentes son inmutables';
+END//
+
+CREATE TRIGGER trg_incidentes_no_delete
+BEFORE DELETE ON incidentes
+FOR EACH ROW
+BEGIN
+  SIGNAL SQLSTATE '45000'
+    SET MESSAGE_TEXT = 'Los incidentes son inmutables';
+END//
+
+DELIMITER ;
+
 -- 7) Productos
 CREATE TABLE productos (
   id_producto INT AUTO_INCREMENT PRIMARY KEY,

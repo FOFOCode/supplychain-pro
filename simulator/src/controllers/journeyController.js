@@ -6,6 +6,7 @@ const axios = require('axios');
 const { calcularDistancia, interpolarPunto, randomBetween } = require('../utils/calculations');
 const { generarTelemetria } = require('../utils/telemetry');
 const { readState, writeState } = require('../utils/stateStore');
+const { getStorageState, setStorageState } = require('../utils/storageMonitor');
 
 const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:3000';
 const TELEMETRY_INTERVAL = 5000;
@@ -31,12 +32,14 @@ function serializeJourney(journey) {
     distanciaRecorrida: journey.distanciaRecorrida,
     ultimoIdRegistroTelemetria: journey.ultimoIdRegistroTelemetria,
     elapsedSeconds: journey.elapsedSeconds || 0,
+    lastPosition: journey.lastPosition || null,
   };
 }
 
 function persistJourneys() {
   const payload = {
     updatedAt: new Date().toISOString(),
+    storage: getStorageState(),
     journeys: Array.from(activeJourneys.values()).map(serializeJourney),
   };
   writeState(payload);
@@ -46,10 +49,15 @@ function restoreJourneys() {
   const stored = readState();
   if (!stored || !Array.isArray(stored.journeys)) return 0;
 
+  if (stored.storage) {
+    setStorageState(stored.storage);
+  }
+
   stored.journeys.forEach((journey) => {
     const restored = {
       ...journey,
       telemetryInterval: null,
+      lastPosition: journey.lastPosition || null,
     };
     activeJourneys.set(restored.id_envio, restored);
   });
@@ -140,6 +148,7 @@ function iniciarTelemetria(id_envio) {
         const posicion = interpolarPunto(journey.waypoints[i], journey.waypoints[i + 1], interpolacion);
 
         journey.telemetria = generarTelemetria(journey.telemetria, journey.tempMin, journey.tempMax);
+        journey.lastPosition = { lat: posicion.lat, lng: posicion.lng };
         journey.elapsedSeconds = tiempoTranscurrido;
 
         // Enviar telemetría al backend
@@ -217,6 +226,7 @@ async function iniciarViaje(id_envio, id_ruta, tempMin, tempMax, waypoints) {
     duracionTotal: duracionTotalSegundos,
     velocidadMetrosPorSegundo,
     distanciaTotal,
+    lastPosition: waypoints?.length ? { lat: waypoints[0].lat, lng: waypoints[0].lng } : null,
     telemetria: {
       temperatura: randomBetween(normalizedTempMin, normalizedTempMax),
       humedad: randomBetween(60, 75),

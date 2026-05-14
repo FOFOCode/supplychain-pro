@@ -17,6 +17,8 @@ jobs:
         run: docker build -t supplychainpro-backend ./backend
       - name: Construir imagen SIMULATOR
         run: docker build -t supplychainpro-simulator ./simulator
+      - name: Construir imagen FRONTEND
+        run: docker build -t supplychainpro-frontend ./frontend
       - name: Crear .env para CI desde .env.example (si existe)
         run: |
           if [ -f .env.example ]; then
