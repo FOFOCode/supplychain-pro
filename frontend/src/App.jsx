@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/set-state-in-effect */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { io } from "socket.io-client";
 import "./App.css";
@@ -79,7 +80,7 @@ function App() {
     if (typeof value === "string") {
       try {
         return JSON.parse(value);
-      } catch (err) {
+      } catch {
         return { raw: value };
       }
     }
@@ -235,7 +236,7 @@ function App() {
         }))
         : [];
       setIncidents(normalized);
-    } catch (err) {
+    } catch {
       setIncidents([]);
     }
   }, [fetchApi, parseMetadata]);
@@ -359,7 +360,7 @@ function App() {
         ? JSON.parse(selectedRuta.waypoints_json)
         : selectedRuta.waypoints_json;
       return Array.isArray(parsed) ? parsed : null;
-    } catch (err) {
+    } catch {
       return null;
     }
   }, [selectedRuta]);
@@ -404,7 +405,7 @@ function App() {
     try {
       const payload = await fetchApi(`/simulator/storage${query}`);
       setStorageStatus(payload);
-    } catch (err) {
+    } catch {
       // keep previous state on error
     }
   }, [fetchApi, selectedEnvio, token]);
@@ -437,7 +438,7 @@ function App() {
         url: SIMULATOR_EXTERNAL_URL,
         id_envio: selectedEnvio?.id_envio ?? null,
       });
-    } catch (err) {
+    } catch {
       const checkedAt = new Date().toISOString();
       setExternalAccess({
         status: "blocked",
