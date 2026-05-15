@@ -318,6 +318,118 @@
   color: var(--muted);
 }
 
+.status-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-weight: 700;
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  background: #efeae4;
+  color: #6b5a4c;
+}
+
+.status-pill.blocked {
+  background: #ffe8e6;
+  color: #7d2c22;
+}
+
+.status-pill.reachable {
+  background: #fff4d7;
+  color: #8a5a2d;
+}
+
+.storage-card {
+  display: grid;
+  gap: 12px;
+}
+
+.storage-meter {
+  position: relative;
+  height: 12px;
+  border-radius: 999px;
+  background: #f0e7de;
+  overflow: hidden;
+}
+
+.storage-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #f0b86e, #e9795a);
+  transition: width 0.4s ease;
+}
+
+.storage-fill.full {
+  background: linear-gradient(90deg, #f0534d, #c12f28);
+}
+
+.storage-meta {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+.storage-alert {
+  padding: 8px 12px;
+  border-radius: 12px;
+  background: #ffe8e6;
+  border: 1px solid #f5b3ac;
+  color: #7d2c22;
+  font-weight: 700;
+  text-align: center;
+}
+
+.incidents-list-card {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.incidents-body {
+  max-height: 320px;
+  overflow: auto;
+  display: grid;
+  gap: 12px;
+}
+
+.incident-line {
+  border-radius: 12px;
+  padding: 12px;
+  border: 1px solid #efe4d9;
+  background: #faf6f1;
+}
+
+.incident-head {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.8rem;
+  color: var(--muted);
+  margin-bottom: 6px;
+}
+
+.incident-type {
+  font-weight: 700;
+  color: #6b5846;
+}
+
+.incident-meta {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 0.8rem;
+  color: #6a5c4f;
+}
+
+.incident-desc {
+  margin: 8px 0 0;
+  font-size: 0.85rem;
+  color: #4f443b;
+}
+
 .stream-panel {
   position: sticky;
   top: 108px;
@@ -349,6 +461,7 @@
   border-radius: 14px;
   padding: 16px;
   overflow: auto;
+  scroll-behavior: smooth;
   color: #d4d4d4;
   font-family: var(--font-mono);
   font-size: 0.85rem;
