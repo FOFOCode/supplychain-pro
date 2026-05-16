@@ -23,7 +23,7 @@ const { initSocket } = require("./socket");
 const app = express(); //Instancia del servidor
 const allowedOrigins = (
   process.env.CORS_ORIGINS ||
-  "http://localhost:5173,http://127.0.0.1:5173,http://localhost:5001,http://localhost:3000"
+  "http://localhost:5173,http://127.0.0.1:5173,http://localhost:5174,http://127.0.0.1:5174,http://localhost:5001,http://localhost:3000"
 ).split(",");
 
 app.use(
@@ -31,14 +31,24 @@ app.use(
     origin: function (origin, callback) {
       // Permitir solicitudes sin origin (como curl o Postman)
       if (!origin) return callback(null, true);
+      
+      // En desarrollo, permitir cualquier origen para facilitar testing
+      if (process.env.NODE_ENV !== "production") {
+        return callback(null, true);
+      }
+      
+      // En producción, usar lista blanca
       if (allowedOrigins.includes(origin)) {
         return callback(null, true);
       } else {
         return callback(new Error("No permitido por CORS"));
       }
     },
-    methods: ["GET", "POST", "PUT", "DELETE"],
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     credentials: true,
+    preflightContinue: false, // Responder a preflight requests
+    optionsSuccessStatus: 204, // Código de éxito para OPTIONS
+    allowedHeaders: ["Content-Type", "Authorization"],
   }),
 );
 app.use(express.json()); //Recibir los datos en JSON
@@ -150,11 +160,11 @@ app.get("/health/db", async (req, res) => {
 
 // Iniciar servidor
 const PORT = process.env.PORT || 5000;
-const server = http.createServer(app);
-initSocket(server, allowedOrigins);
+const httpServer = http.createServer(app);
+initSocket(httpServer, allowedOrigins);
 
-server.listen(PORT, async () => {
-  console.log(`Servidor backend corriendo en el puerto ${PORT}`);
+httpServer.listen(PORT, async () => {
+  console.log(`Servidor escuchando en el puerto ${PORT}`);
   console.log(`Swagger UI disponible en /api-docs`);
   await verifyDbConnection();
 });
