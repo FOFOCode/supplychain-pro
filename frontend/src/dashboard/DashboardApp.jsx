@@ -3,7 +3,7 @@
  * Maneja autenticación y renderizado del layout
  */
 
-import { useCallback, useState, useEffect } from "react";
+import { useCallback, useState } from "react";
 import { useAuth } from "./hooks/useAuth.js";
 import DashboardLayout from "./components/DashboardLayout.jsx";
 import LoginScreen from "./components/LoginScreen.jsx";
@@ -12,7 +12,6 @@ import "../index.css";
 export default function DashboardApp() {
   const {
     user,
-    token,
     loading,
     error: authError,
     isAuthenticated,

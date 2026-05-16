@@ -312,16 +312,5 @@ const manifest = {
   ]
 };
 
-// Exportar para consumo en Node
-module.exports = manifest;
-
-// Mostrar en CLI si se ejecuta directamente
-if (require.main === module) {
-  console.log('📊 MANIFEST - Dashboard Logístico\n');
-  console.log('✅ Estado: COMPLETADO - Listo para usar\n');
-  console.log(`📁 Total de archivos: ${manifest.total_files}`);
-  console.log(`💻 Total de líneas: ${manifest.total_lineas_codigo}\n`);
-  console.log('🚀 Activación: 1 cambio en main.jsx\n');
-  console.log('📍 URL: http://localhost:5173\n');
-  console.log('✨ ¡Dashboard listo para producción!\n');
-}
+// Exportar para consumo en módulos ES
+export default manifest;

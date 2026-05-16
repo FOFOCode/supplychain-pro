@@ -12,13 +12,6 @@ export function useEnvios(autoLoad = true) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  // Cargar envíos al montar
-  useEffect(() => {
-    if (autoLoad) {
-      loadEnvios();
-    }
-  }, []);
-
   const loadEnvios = useCallback(async () => {
     setLoading(true);
     setError("");
@@ -44,6 +37,13 @@ export function useEnvios(autoLoad = true) {
 
     setLoading(false);
   }, []);
+
+  // Cargar envíos al montar
+  useEffect(() => {
+    if (autoLoad) {
+      loadEnvios();
+    }
+  }, [autoLoad, loadEnvios]);
 
   const selectEnvio = useCallback((envio) => {
     setSelectedEnvio(envio);
