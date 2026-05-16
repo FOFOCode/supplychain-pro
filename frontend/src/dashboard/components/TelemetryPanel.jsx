@@ -2,12 +2,13 @@
  * TelemetryPanel - Panel de tarjetas de telemetría
  */
 
-import { useCallback, useEffect, useState } from "react";
 import { useEnvios } from "../hooks/useEnvios.js";
 import { useTelemetry } from "../hooks/useTelemetry.js";
 import "../styles/telemetry.css";
 
-function TelemetryCard({ envio, telemetry, status, statusColor, statusText }) {
+function TelemetryCard({ envio }) {
+  const { telemetry, status, statusColor, statusText } = useTelemetry(envio.id_vehiculo);
+
   if (!envio) {
     return (
       <div className="telemetry-card loading">
@@ -98,41 +99,8 @@ function TelemetryCard({ envio, telemetry, status, statusColor, statusText }) {
   );
 }
 
-export default function TelemetryPanel({ selectedEnvio }) {
+export default function TelemetryPanel() {
   const { envios, loading: enviosLoading } = useEnvios();
-  const [telemetryData, setTelemetryData] = useState({});
-  const [statusData, setStatusData] = useState({});
-
-  // Cargar telemetría de cada envío
-  useEffect(() => {
-    const loadTelemetryForEnvios = async () => {
-      const newTelemetryData = {};
-      const newStatusData = {};
-
-      for (const envio of envios) {
-        // Usar el hook para cada envío
-        const { telemetry, status, statusColor, statusText } = useTelemetry(
-          envio.id_vehiculo
-        );
-
-        newTelemetryData[envio.id_envio] = telemetry;
-        newStatusData[envio.id_envio] = { status, statusColor, statusText };
-      }
-
-      setTelemetryData(newTelemetryData);
-      setStatusData(newStatusData);
-    };
-
-    loadTelemetryForEnvios();
-  }, [envios]);
-
-  const getTelemetryForEnvio = useCallback((envioId) => {
-    return telemetryData[envioId] || null;
-  }, [telemetryData]);
-
-  const getStatusForEnvio = useCallback((envioId) => {
-    return statusData[envioId] || { status: "sin_datos", statusColor: "#9ca3af", statusText: "Sin datos" };
-  }, [statusData]);
 
   return (
     <div className="telemetry-panel">
@@ -151,20 +119,9 @@ export default function TelemetryPanel({ selectedEnvio }) {
         </div>
       ) : (
         <div className="telemetry-grid">
-          {envios.map((envio) => {
-            const telemetry = getTelemetryForEnvio(envio.id_envio);
-            const { status, statusColor, statusText } = getStatusForEnvio(envio.id_envio);
-            return (
-              <TelemetryCard
-                key={envio.id_envio}
-                envio={envio}
-                telemetry={telemetry}
-                status={status}
-                statusColor={statusColor}
-                statusText={statusText}
-              />
-            );
-          })}
+          {envios.map((envio) => (
+            <TelemetryCard key={envio.id_envio} envio={envio} />
+          ))}
         </div>
       )}
     </div>

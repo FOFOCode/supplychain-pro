@@ -13,30 +13,6 @@ export function useIncidents(vehiculoId = null) {
   const [error, setError] = useState("");
   const unsubscribeRef = useRef(null);
 
-  // Cargar incidentes al montar
-  useEffect(() => {
-    loadIncidents();
-    
-    // Restaurar incidentes guardados
-    const saved = storageService.getIncidents();
-    if (saved && saved.length > 0) {
-      setIncidents(saved);
-    }
-  }, []);
-
-  // Suscribirse a nuevos incidentes
-  useEffect(() => {
-    unsubscribeRef.current = socketService.onIncidentNew((incident) => {
-      if (!vehiculoId || incident.id_vehiculo === vehiculoId) {
-        addIncident(incident);
-      }
-    });
-
-    return () => {
-      if (unsubscribeRef.current) unsubscribeRef.current();
-    };
-  }, [vehiculoId]);
-
   const loadIncidents = useCallback(async () => {
     setLoading(true);
     setError("");
@@ -64,6 +40,30 @@ export function useIncidents(vehiculoId = null) {
     setIncidents((prev) => [incident, ...prev]);
     storageService.addIncident(incident);
   }, []);
+
+  // Cargar incidentes al montar
+  useEffect(() => {
+    loadIncidents();
+    
+    // Restaurar incidentes guardados
+    const saved = storageService.getIncidents();
+    if (saved && saved.length > 0) {
+      setIncidents(saved);
+    }
+  }, [loadIncidents]);
+
+  // Suscribirse a nuevos incidentes
+  useEffect(() => {
+    unsubscribeRef.current = socketService.onIncidentNew((incident) => {
+      if (!vehiculoId || incident.id_vehiculo === vehiculoId) {
+        addIncident(incident);
+      }
+    });
+
+    return () => {
+      if (unsubscribeRef.current) unsubscribeRef.current();
+    };
+  }, [vehiculoId, addIncident]);
 
   const getSeverityColor = useCallback((severity) => {
     const colors = {

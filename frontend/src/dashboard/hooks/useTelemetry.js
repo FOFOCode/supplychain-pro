@@ -5,7 +5,6 @@
 import { useEffect, useState, useCallback, useRef } from "react";
 import apiService from "../services/apiService.js";
 import socketService from "../services/socketService.js";
-import storageService from "../services/storageService.js";
 
 export function useTelemetry(vehiculoId) {
   const [telemetry, setTelemetry] = useState(null);
@@ -16,12 +15,38 @@ export function useTelemetry(vehiculoId) {
   const unsubscribeRef = useRef(null);
   const unsubscribePositionRef = useRef(null);
 
+  const loadTelemetry = useCallback(async () => {
+    if (!vehiculoId) return;
+
+    setLoading(true);
+    setError("");
+
+    const result = await apiService.getUltimaTelemetria(vehiculoId);
+
+    if (result.success && result.data) {
+      setTelemetry(result.data);
+      setHistory([result.data]);
+    } else if (!result.success) {
+      setError(result.error);
+    }
+
+    setLoading(false);
+  }, [vehiculoId]);
+
+  const addToHistory = useCallback((data) => {
+    setHistory((prev) => {
+      const updated = [data, ...prev];
+      // Mantener solo últimos 100 registros
+      return updated.slice(0, 100);
+    });
+  }, []);
+
   // Cargar telemetría inicial
   useEffect(() => {
     if (vehiculoId) {
       loadTelemetry();
     }
-  }, [vehiculoId]);
+  }, [vehiculoId, loadTelemetry]);
 
   // Suscribirse a actualizaciones en tiempo real
   useEffect(() => {
@@ -60,33 +85,7 @@ export function useTelemetry(vehiculoId) {
       if (unsubscribePositionRef.current) unsubscribePositionRef.current();
       if (unsubscribeConnection) unsubscribeConnection();
     };
-  }, [vehiculoId]);
-
-  const loadTelemetry = useCallback(async () => {
-    if (!vehiculoId) return;
-
-    setLoading(true);
-    setError("");
-
-    const result = await apiService.getUltimaTelemetria(vehiculoId);
-
-    if (result.success && result.data) {
-      setTelemetry(result.data);
-      setHistory([result.data]);
-    } else if (!result.success) {
-      setError(result.error);
-    }
-
-    setLoading(false);
-  }, [vehiculoId]);
-
-  const addToHistory = useCallback((data) => {
-    setHistory((prev) => {
-      const updated = [data, ...prev];
-      // Mantener solo últimos 100 registros
-      return updated.slice(0, 100);
-    });
-  }, []);
+  }, [vehiculoId, addToHistory]);
 
   const getStatus = useCallback(() => {
     if (!telemetry) return "sin_datos";
@@ -96,7 +95,7 @@ export function useTelemetry(vehiculoId) {
 
     // Rangos típicos para mercancía perecedera
     if (temp < -18 || temp > 8 || humidity > 85) {
-      return "critico";
+      return "critico"
     }
     if (temp < -20 || temp > 10 || humidity > 90) {
       return "advertencia";
