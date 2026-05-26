@@ -11,6 +11,7 @@ const {
   restoreJourneys,
   persistJourneys,
 } = require("./controllers/journeyController");
+const { getStorageUsage, wasAlertSent } = require("./utils/storageMonitor");
 
 const app = express();
 const PORT = process.env.SIMULATOR_PORT || 3001;
@@ -37,6 +38,33 @@ app.get("/api/simulator/health", (req, res) => {
   res.json({
     status: "ok",
     timestamp: new Date().toISOString(),
+  });
+});
+
+// Estado de almacenamiento del volumen Docker
+app.get('/api/simulator/storage', async (req, res) => {
+  const usage = getStorageUsage();
+  const idEnvio = Number(req.query.id_envio);
+  let alertTriggered = false;
+  let alertError = null;
+
+  if (usage.percent >= 100 && !wasAlertSent() && Number.isFinite(idEnvio)) {
+    try {
+      await incidentController.incidenteVolumenLleno(idEnvio, usage);
+      alertTriggered = true;
+    } catch (err) {
+      alertError = err.message;
+    }
+  }
+
+  res.json({
+    percent: usage.percent,
+    used_bytes: usage.usedBytes,
+    max_bytes: usage.maxBytes,
+    updated_at: new Date().toISOString(),
+    alert_sent: wasAlertSent(),
+    alert_triggered: alertTriggered,
+    alert_error: alertError,
   });
 });
 

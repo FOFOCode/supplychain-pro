@@ -32,6 +32,17 @@ exports.listJourneys = async (req, res, next) => {
   }
 };
 
+exports.storageStatus = async (req, res, next) => {
+  try {
+    const idEnvio = req.query.id_envio ? String(req.query.id_envio) : "";
+    const query = idEnvio ? `?id_envio=${encodeURIComponent(idEnvio)}` : "";
+    const response = await forwardRequest("get", `/storage${query}`);
+    res.status(response.status).json(response.data);
+  } catch (err) {
+    next(err);
+  }
+};
+
 exports.getJourney = async (req, res, next) => {
   try {
     const response = await forwardRequest("get", `/journeys/${req.params.id_envio}`);

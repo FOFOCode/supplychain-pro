@@ -5,6 +5,7 @@ const { authenticate } = require("../middlewares/auth");
 const requireRole = require("../middlewares/requireRole");
 
 router.get("/health", authenticate, ctrl.health);
+router.get("/storage", authenticate, ctrl.storageStatus);
 router.get("/journeys", authenticate, ctrl.listJourneys);
 router.get("/journeys/:id_envio", authenticate, ctrl.getJourney);
 

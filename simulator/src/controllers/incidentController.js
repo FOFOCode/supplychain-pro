@@ -3,11 +3,19 @@
  */
 
 const axios = require('axios');
-const { activeJourneys } = require('./journeyController');
+const { activeJourneys, persistJourneys } = require('./journeyController');
+const { setOverridePercent, markAlertSent } = require('../utils/storageMonitor');
 
 const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:3000';
 
 let adminToken = null;
+
+function getJourneyCoords(journey) {
+  const fallback = journey?.waypoints?.length ? journey.waypoints[0] : null;
+  const latitud = journey?.lastPosition?.lat ?? journey?.lastPosition?.latitud ?? fallback?.lat ?? null;
+  const longitud = journey?.lastPosition?.lng ?? journey?.lastPosition?.longitud ?? fallback?.lng ?? null;
+  return { latitud, longitud };
+}
 
 /**
  * Obtiene token de admin
@@ -40,6 +48,18 @@ async function crearIncidente(id_envio, tipo, payload) {
       headers: { Authorization: `Bearer ${adminToken}` }
     });
 
+    // Actualizar estado del envío a INCIDENTE_REPORTADO en la DB
+    try {
+      await axios.put(
+        `${BACKEND_URL}/api/envios/${id_envio}`,
+        { estado: 'INCIDENTE_REPORTADO' },
+        { headers: { Authorization: `Bearer ${adminToken}` } }
+      );
+      console.log(`✓ Estado del envío ${id_envio} actualizado a INCIDENTE_REPORTADO en la DB`);
+    } catch (e) {
+      console.error(`✗ Error actualizando estado del envío ${id_envio} a INCIDENTE_REPORTADO:`, e.message);
+    }
+
     const journey = activeJourneys.get(id_envio);
     if (journey) {
       journey.incidentes.push({
@@ -63,7 +83,8 @@ async function incidenteTemperaturaAlta(id_envio) {
   const journey = activeJourneys.get(id_envio);
   if (!journey) throw new Error('Viaje no encontrado');
 
-  journey.telemetria.temperatura = Math.min(journey.tempMax + 7, 25);
+  journey.telemetria.temperatura = 12;
+  const { latitud, longitud } = getJourneyCoords(journey);
 
   return crearIncidente(id_envio, 'RUPTURA_CADENA_FRIO', {
     id_envio,
@@ -75,6 +96,8 @@ async function incidenteTemperaturaAlta(id_envio) {
     origen_evento: 'SIMULADOR',
     metadata_json: {
       evento: 'temperatura_alta',
+      latitud,
+      longitud,
       timestamp: new Date().toISOString()
     }
   });
@@ -88,6 +111,7 @@ async function incidenteBateriaBaja(id_envio) {
   if (!journey) throw new Error('Viaje no encontrado');
 
   journey.telemetria.porcentaje_bateria = 5;
+  const { latitud, longitud } = getJourneyCoords(journey);
 
   return crearIncidente(id_envio, 'BATERIA_BAJA', {
     id_envio,
@@ -99,6 +123,8 @@ async function incidenteBateriaBaja(id_envio) {
     origen_evento: 'SIMULADOR',
     metadata_json: {
       evento: 'bateria_baja',
+      latitud,
+      longitud,
       timestamp: new Date().toISOString()
     }
   });
@@ -111,14 +137,18 @@ async function incidenteGeofenceViolation(id_envio) {
   const journey = activeJourneys.get(id_envio);
   if (!journey) throw new Error('Viaje no encontrado');
 
-  return crearIncidente(id_envio, 'VIOLACION_GEOFENCE', {
+  const { latitud, longitud } = getJourneyCoords(journey);
+
+  return crearIncidente(id_envio, 'OUT_OF_BOUNDS', {
     id_envio,
     id_registro_telemetria: journey.ultimoIdRegistroTelemetria,
-    tipo_incidente: 'VIOLACION_GEOFENCE',
-    descripcion: 'El vehículo se encuentra fuera del perímetro autorizado',
+    tipo_incidente: 'OUT_OF_BOUNDS',
+    descripcion: 'El vehiculo se encuentra fuera del perimetro autorizado',
     origen_evento: 'SIMULADOR',
     metadata_json: {
-      evento: 'geofence_violation',
+      evento: 'out_of_bounds',
+      latitud,
+      longitud,
       timestamp: new Date().toISOString()
     }
   });
@@ -127,19 +157,32 @@ async function incidenteGeofenceViolation(id_envio) {
 /**
  * Incidente: Volumen lleno
  */
-async function incidenteVolumenLleno(id_envio) {
+async function incidenteVolumenLleno(id_envio, storageDetails = {}) {
   const journey = activeJourneys.get(id_envio);
   if (!journey) throw new Error('Viaje no encontrado');
 
-  return crearIncidente(id_envio, 'VOLUMEN_LLENO', {
+  const { latitud, longitud } = getJourneyCoords(journey);
+  const percent = Number.isFinite(storageDetails.percent) ? storageDetails.percent : 100;
+  const usedBytes = storageDetails.usedBytes ?? storageDetails.used_bytes ?? null;
+  const maxBytes = storageDetails.maxBytes ?? storageDetails.max_bytes ?? null;
+
+  setOverridePercent(percent);
+  markAlertSent(true);
+  persistJourneys();
+
+  return crearIncidente(id_envio, 'STORAGE_FULL', {
     id_envio,
     id_registro_telemetria: journey.ultimoIdRegistroTelemetria,
-    tipo_incidente: 'VOLUMEN_LLENO',
-    descripcion: 'El volumen de almacenamiento del dispositivo está al 100%',
+    tipo_incidente: 'STORAGE_FULL',
+    descripcion: 'El volumen de almacenamiento del dispositivo esta al 100%',
     origen_evento: 'SIMULADOR',
     metadata_json: {
-      evento: 'volumen_lleno',
-      porcentaje: 100,
+      evento: 'storage_full',
+      porcentaje: percent,
+      used_bytes: usedBytes,
+      max_bytes: maxBytes,
+      latitud,
+      longitud,
       timestamp: new Date().toISOString()
     }
   });
