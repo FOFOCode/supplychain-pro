@@ -20,19 +20,6 @@ export default function FiltersPanel({ onFiltersChange }) {
 
   const [vehiculos, setVehiculos] = useState([]);
   const [rutas, setRutas] = useState([]);
-  const [loading, setLoading] = useState(false);
-
-  function getDefaultStartDate() {
-    const date = new Date();
-    date.setDate(date.getDate() - 7);
-    return date.toISOString().split("T")[0];
-  }
-
-  useEffect(() => {
-    loadVehiculos();
-    loadRutas();
-    onFiltersChange(filters);
-  }, []);
 
   const loadVehiculos = async () => {
     try {
@@ -55,6 +42,23 @@ export default function FiltersPanel({ onFiltersChange }) {
       console.error("Error loading rutas:", err);
     }
   };
+
+  function getDefaultStartDate() {
+    const date = new Date();
+    date.setDate(date.getDate() - 7);
+    return date.toISOString().split("T")[0];
+  }
+
+  useEffect(() => {
+    // cargar opciones al montar
+    loadVehiculos();
+    loadRutas();
+    // notificar filtros iniciales al padre
+    if (onFiltersChange) onFiltersChange(filters);
+    // not adding filters/onFiltersChange to deps to mimic initial mount behavior
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
 
   const handleFilterChange = (e) => {
     const { name, value } = e.target;

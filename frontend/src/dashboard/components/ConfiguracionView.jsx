@@ -24,24 +24,7 @@ import { getIncidentTypeColor, getIncidentTypeLabel, formatShipmentId } from "..
 import { geoService } from "../services/geoService.js";
 import "./styles/ConfiguracionView.css";
 
-// Paleta de colores para los tipos de incidentes
-const STATIC_COLORS = {
-  RUPTURA_CADENA_FRIO: "#ef4444",
-  TEMPERATURA_CRITICA: "#db2777",
-  BATERIA_BAJA: "#eab308",
-  GEOFENCE_VIOLATION: "#f97316",
-  VIOLACION_GEOFENCE: "#f97316",
-  OUT_OF_BOUNDS: "#2563eb",
-  DESVIO_RUTA: "#2563eb",
-  STORAGE_FULL: "#7c3aed",
-  VOLUMEN_LLENO: "#7c3aed",
-  PERDIDA_SENAL: "#6b7280",
-  HUMEDAD_CRITICA: "#0891b2",
-  ERROR_SENSOR: "#059669",
-};
-
-// Función para obtener un color consistente para un tipo de incidente
-const getColor = (type) => STATIC_COLORS[type] || getIncidentTypeColor(type);
+// Removed STATIC_COLORS and getColor function
 
 // Componente de resolución de ubicación asíncrono basado en coordenadas
 function IncidentLocation({ lat, lon }) {
@@ -213,7 +196,7 @@ export default function EstadísticasView({ onNavigateToMap }) {
                     key={type}
                     dataKey={type}
                     stackId="a"
-                    fill={getColor(type)}
+                    fill={getIncidentTypeColor(type)}
                     name={getIncidentTypeLabel(type)}
                     radius={[4, 4, 0, 0]}
                   />
@@ -255,7 +238,7 @@ export default function EstadísticasView({ onNavigateToMap }) {
                     key={type}
                     dataKey={type}
                     stackId="a"
-                    fill={getColor(type)}
+                    fill={getIncidentTypeColor(type)}
                     name={getIncidentTypeLabel(type)}
                     radius={[4, 4, 0, 0]}
                   />
@@ -288,7 +271,7 @@ export default function EstadísticasView({ onNavigateToMap }) {
                   nameKey="tipo_incidente"
                 >
                   {tipos.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={getColor(entry.tipo_incidente)} />
+                    <Cell key={`cell-${index}`} fill={getIncidentTypeColor(entry.tipo_incidente)} />
                   ))}
                 </Pie>
                 <Tooltip formatter={(value, name) => [value, getIncidentTypeLabel(name)]} />
@@ -350,7 +333,7 @@ export default function EstadísticasView({ onNavigateToMap }) {
               </thead>
               <tbody>
                 {incidentes.map((inc, idx) => {
-                  const typeColor = getColor(inc.tipo_incidente);
+                  const typeColor = getIncidentTypeColor(inc.tipo_incidente);
                   const shipmentCode = inc.codigo_rastreo || formatShipmentId(inc.id_envio);
                   const vehicleLabel = inc.vehiculo_placa || (inc.id_vehiculo ? `#${inc.id_vehiculo}` : "Sin asignar");
 

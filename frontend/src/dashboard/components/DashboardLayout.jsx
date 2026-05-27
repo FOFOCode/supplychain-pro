@@ -27,7 +27,6 @@ export default function DashboardLayout({ user, onLogout }) {
   const [selectedEnvio, setSelectedEnvio] = useState(null);
   const [selectedIncident, setSelectedIncident] = useState(null);
   const [rupturas, setRupturas] = useState([]);
-  const [mapHighlight, setMapHighlight] = useState(null);
   const { envios } = useEnvios();
   const { incidents } = useIncidents();
   const themeContext = useTheme();
@@ -94,7 +93,7 @@ export default function DashboardLayout({ user, onLogout }) {
         }
       }
     } else {
-      setMapHighlight(data);
+      // fallback: just switch to dashboard view
       setActiveView("dashboard");
     }
   };

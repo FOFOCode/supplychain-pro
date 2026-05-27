@@ -9,13 +9,6 @@ export function useTheme() {
   const [theme, setTheme] = useState("light");
 
   // Cargar tema al montar el componente
-  useEffect(() => {
-    const prefs = storageService.getPreferences();
-    const savedTheme = prefs.theme || "light";
-    setTheme(savedTheme);
-    applyTheme(savedTheme);
-  }, []);
-
   // Aplicar tema al documento
   const applyTheme = useCallback((themeValue) => {
     document.documentElement.setAttribute("data-theme", themeValue);
@@ -25,6 +18,14 @@ export function useTheme() {
     const prefs = storageService.getPreferences();
     storageService.setPreferences({ ...prefs, theme: themeValue });
   }, []);
+
+  // Cargar tema al montar el componente
+  useEffect(() => {
+    const prefs = storageService.getPreferences();
+    const savedTheme = prefs.theme || "light";
+    setTheme(savedTheme);
+    applyTheme(savedTheme);
+  }, [applyTheme]);
 
   // Cambiar tema
   const toggleTheme = useCallback(() => {

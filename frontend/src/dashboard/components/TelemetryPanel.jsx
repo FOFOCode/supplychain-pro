@@ -67,7 +67,7 @@ const TelemetryPanel = ({ selectedEnvio, selectedIncident, rupturas = [], onView
   const rupturaTemp = toNumber(latestRuptura?.temperatura ?? latestRuptura?.valor_registrado);
   const temperatureValue = telemetryTemp ?? rupturaTemp;
   const temperatureText = temperatureValue !== null ? temperatureValue.toFixed(1) : "N/A";
-  const shipmentId = formatShipmentId(id_envio);
+  
 
   return (
     <div className="telemetry-panel">
