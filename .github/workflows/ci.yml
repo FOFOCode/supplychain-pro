@@ -124,7 +124,7 @@ jobs:
       - name: Create .env for CI
         run: |
           cat > .env << 'EOF'
-          DB_HOST=localhost
+          DB_HOST=supplychainpro-db
           DB_PORT=3306
           DB_NAME=supplychain_db
           DB_USER=supplychain_user
@@ -154,7 +154,7 @@ jobs:
       - name: Create .env for CI
         run: |
           cat > .env << 'EOF'
-          DB_HOST=localhost
+          DB_HOST=supplychainpro-db
           DB_PORT=3306
           DB_NAME=supplychain_db
           DB_USER=supplychain_user
