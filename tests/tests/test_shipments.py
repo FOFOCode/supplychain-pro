@@ -43,7 +43,12 @@ def test_ship_01_create_shipment_success(driver):
     success = ship_page.get_success_message()
     # Si no, simplemente verificamos que la API lo tiene
     import requests
-    res = requests.get(f"{API_BASE_URL}/envios")
+    # Usar autenticación para consultar envíos (endpoints protegidos)
+    auth = requests.post(f"{API_BASE_URL}/auth/login", json={"correo": ADMIN_EMAIL, "contrasena": ADMIN_PASSWORD})
+    assert auth.status_code == 200
+    token = auth.json().get("token")
+    res = requests.get(f"{API_BASE_URL}/envios", headers={"Authorization": f"Bearer {token}"})
+    assert res.status_code == 200
     assert any(env["codigo_rastreo"] == unique_code for env in res.json())
 
 def test_ship_02_duplicate_tracking_code(api_client):

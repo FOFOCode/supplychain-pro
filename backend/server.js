@@ -84,6 +84,8 @@ app.use("/api/vehiculos", vehiculosRoutes);
 app.use("/api/envios-vehiculos", enviosVehiculosRoutes);
 app.use("/api/registros", registrosRoutes);
 app.use("/api/registrosTelemetria", registrosRoutes);
+// Alias histórico: algunos tests y clientes usan /api/telemetria
+app.use("/api/telemetria", registrosRoutes);
 app.use("/api/incidentes", incidentesRoutes);
 app.use("/api/productos", productosRoutes);
 app.use("/api/detalles-envio", detallesEnvioRoutes);
