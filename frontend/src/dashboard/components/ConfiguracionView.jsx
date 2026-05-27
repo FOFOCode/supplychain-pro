@@ -21,42 +21,12 @@ import {
 import { useEstadisticas } from "../hooks/useEstadisticas.js";
 import FiltersPanel from "./FiltersPanel.jsx";
 import { getIncidentTypeColor, getIncidentTypeLabel, formatShipmentId } from "../utils/formatters.js";
-import { geoService } from "../services/geoService.js";
+import IncidentLocation from "./IncidentLocation.jsx";
 import "./styles/ConfiguracionView.css";
 
 // Removed STATIC_COLORS and getColor function
 
-// Componente de resolución de ubicación asíncrono basado en coordenadas
-function IncidentLocation({ lat, lon }) {
-  const [address, setAddress] = useState("Cargando ubicación...");
-
-  useEffect(() => {
-    let active = true;
-    if (lat == null || lon == null) {
-      setAddress("Ubicación desconocida");
-      return;
-    }
-
-    geoService
-      .reverseGeocode(Number(lat), Number(lon))
-      .then((addr) => {
-        if (active) {
-          setAddress(addr);
-        }
-      })
-      .catch(() => {
-        if (active) {
-          setAddress(`Coord: ${Number(lat).toFixed(4)}, ${Number(lon).toFixed(4)}`);
-        }
-      });
-
-    return () => {
-      active = false;
-    };
-  }, [lat, lon]);
-
-  return <span>📍 {address}</span>;
-}
+// IncidentLocation moved to its own file to satisfy fast-refresh linter rule
 
 export default function EstadísticasView({ onNavigateToMap }) {
   const [filters, setFilters] = useState({

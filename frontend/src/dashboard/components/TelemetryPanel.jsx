@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import { useTelemetry } from "../hooks/useTelemetry.js";
 import { useIncidents } from "../hooks/useIncidents.js";
-import { formatShipmentId, getIncidentTypeLabel } from "../utils/formatters.js";
+import { getIncidentTypeLabel } from "../utils/formatters.js";
 import "../styles/telemetry.css";
 
 const TelemetryPanel = ({ selectedEnvio, selectedIncident, rupturas = [], onViewIncidents }) => {
