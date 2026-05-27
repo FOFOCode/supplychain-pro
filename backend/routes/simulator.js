@@ -4,6 +4,47 @@ const ctrl = require("../controllers/simulatorController");
 const { authenticate } = require("../middlewares/auth");
 const requireRole = require("../middlewares/requireRole");
 
+/**
+ * @openapi
+ * /api/simulator/estadisticas:
+ *   get:
+ *     tags: [Simulator]
+ *     summary: Obtiene estadísticas de incidentes (filtrables)
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: startDate
+ *         schema:
+ *           type: string
+ *           format: date
+ *       - in: query
+ *         name: endDate
+ *         schema:
+ *           type: string
+ *           format: date
+ *       - in: query
+ *         name: vehiculoId
+ *         schema:
+ *           type: integer
+ *       - in: query
+ *         name: rutaId
+ *         schema:
+ *           type: integer
+ *       - in: query
+ *         name: envioId
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       200:
+ *         description: Estadísticas generadas
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Estadisticas'
+ */
+router.get("/estadisticas", authenticate, ctrl.getEstadisticas);
+
 router.get("/health", authenticate, ctrl.health);
 router.get("/storage", authenticate, ctrl.storageStatus);
 router.get("/journeys", authenticate, ctrl.listJourneys);

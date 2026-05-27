@@ -268,8 +268,10 @@ export default function IncidentsPanel({ vehiculoId = null, onShowIncident, sele
     error,
     getSeverityColor,
     getSeverityIcon,
-    getIncidentTypeLabel,
   } = useIncidents(vehiculoId);
+  
+  // Usar el formatter directamente para consistencia
+  const getIncidentTypeLabelFormatter = getIncidentTypeLabel;
 
   const [searchTerm, setSearchTerm] = useState("");
   const [severityFilter, setSeverityFilter] = useState("all");
@@ -412,7 +414,7 @@ export default function IncidentsPanel({ vehiculoId = null, onShowIncident, sele
               incident={incident}
               severityIcon={getSeverityIcon(incident.severidad)}
               severityColor={getSeverityColor(incident.severidad)}
-              typeLabel={getIncidentTypeLabel(incident.tipo_incidente)}
+              typeLabel={getIncidentTypeLabelFormatter(incident.tipo_incidente)}
               onShowIncident={onShowIncident}
               isSelected={selectedIncident?.id_incidente === incident.id_incidente}
             />

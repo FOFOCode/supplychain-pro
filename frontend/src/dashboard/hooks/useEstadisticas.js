@@ -12,6 +12,7 @@ export function useEstadisticas(filters) {
     rutas: [],
     tipos: [],
     ubicaciones: [],
+    incidentes: [],
     resumen: null
   });
   const [loading, setLoading] = useState(false);
@@ -54,14 +55,17 @@ export function useEstadisticas(filters) {
         incidentesList.forEach(inc => {
           const key = inc.id_vehiculo || 0;
           const label = inc.vehiculo_placa || (inc.id_vehiculo ? `Vehículo #${inc.id_vehiculo}` : "Sin asignar");
+          const rawType = inc.tipo_incidente || "OTRO";
           if (!vehiculosMap[key]) {
             vehiculosMap[key] = {
               id_vehiculo: key,
               vehiculo: label,
-              total_incidentes: 0
+              total_incidentes: 0,
+              tipos: {}
             };
           }
           vehiculosMap[key].total_incidentes++;
+          vehiculosMap[key].tipos[rawType] = (vehiculosMap[key].tipos[rawType] || 0) + 1;
         });
         const vehiculosData = Object.values(vehiculosMap).sort((a, b) => b.total_incidentes - a.total_incidentes);
 
@@ -69,13 +73,16 @@ export function useEstadisticas(filters) {
         const rutasMap = {};
         incidentesList.forEach(inc => {
           const key = inc.nombre_ruta || "Sin ruta";
+          const rawType = inc.tipo_incidente || "OTRO";
           if (!rutasMap[key]) {
             rutasMap[key] = {
               ruta: key,
-              total_incidentes: 0
+              total_incidentes: 0,
+              tipos: {}
             };
           }
           rutasMap[key].total_incidentes++;
+          rutasMap[key].tipos[rawType] = (rutasMap[key].tipos[rawType] || 0) + 1;
         });
         const rutasData = Object.values(rutasMap).sort((a, b) => b.total_incidentes - a.total_incidentes);
 
@@ -83,22 +90,21 @@ export function useEstadisticas(filters) {
         const tiposDetalleMap = {};
         incidentesList.forEach(inc => {
           const rawType = inc.tipo_incidente || "OTRO";
-          const t = getIncidentTypeLabel(rawType);
           const f = inc.fecha_incidente || inc.fecha_creacion;
-          if (!tiposDetalleMap[t]) {
-            tiposDetalleMap[t] = {
-              tipo_incidente: t,
+          if (!tiposDetalleMap[rawType]) {
+            tiposDetalleMap[rawType] = {
+              tipo_incidente: rawType,
               total_incidentes: 0,
               primer_incidente: f,
               ultimo_incidente: f
             };
           }
-          tiposDetalleMap[t].total_incidentes++;
-          if (new Date(f) < new Date(tiposDetalleMap[t].primer_incidente)) {
-            tiposDetalleMap[t].primer_incidente = f;
+          tiposDetalleMap[rawType].total_incidentes++;
+          if (new Date(f) < new Date(tiposDetalleMap[rawType].primer_incidente)) {
+            tiposDetalleMap[rawType].primer_incidente = f;
           }
-          if (new Date(f) > new Date(tiposDetalleMap[t].ultimo_incidente)) {
-            tiposDetalleMap[t].ultimo_incidente = f;
+          if (new Date(f) > new Date(tiposDetalleMap[rawType].ultimo_incidente)) {
+            tiposDetalleMap[rawType].ultimo_incidente = f;
           }
         });
         const tiposData = Object.values(tiposDetalleMap).sort((a, b) => b.total_incidentes - a.total_incidentes);
@@ -139,6 +145,7 @@ export function useEstadisticas(filters) {
           rutas: rutasData,
           tipos: tiposData,
           ubicaciones: ubicacionesData,
+          incidentes: incidentesList,
           resumen
         });
       } else {

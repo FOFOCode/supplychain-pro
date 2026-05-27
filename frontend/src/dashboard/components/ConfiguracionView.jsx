@@ -1,10 +1,10 @@
 /**
  * EstadísticasView - Dashboard de Estadísticas Avanzado
- * Muestra gráficas interactivas sobre vehículos, rutas, ubicaciones e incidentes
- * Permite navegar al mapa haciendo clic en los datos
+ * Muestra gráficas interactivas sobre vehículos, rutas, y tipos de incidentes.
+ * Permite navegar al mapa haciendo clic en los datos.
  */
 
-import { useState, useEffect } from "react";
+import { useState, useMemo, useEffect } from "react";
 import {
   BarChart,
   Bar,
@@ -17,25 +17,63 @@ import {
   Tooltip,
   Legend,
   ResponsiveContainer,
-  ScatterChart,
-  Scatter
 } from "recharts";
 import { useEstadisticas } from "../hooks/useEstadisticas.js";
 import FiltersPanel from "./FiltersPanel.jsx";
+import { getIncidentTypeColor, getIncidentTypeLabel, formatShipmentId } from "../utils/formatters.js";
+import { geoService } from "../services/geoService.js";
 import "./styles/ConfiguracionView.css";
 
-const COLORS = [
-  "#0088FE",
-  "#00C49F",
-  "#FFBB28",
-  "#FF8042",
-  "#AF19FF",
-  "#FF6B6B",
-  "#4ECDC4",
-  "#45B7D1",
-  "#FFA07A",
-  "#98D8C8"
-];
+// Paleta de colores para los tipos de incidentes
+const STATIC_COLORS = {
+  RUPTURA_CADENA_FRIO: "#ef4444",
+  TEMPERATURA_CRITICA: "#db2777",
+  BATERIA_BAJA: "#eab308",
+  GEOFENCE_VIOLATION: "#f97316",
+  VIOLACION_GEOFENCE: "#f97316",
+  OUT_OF_BOUNDS: "#2563eb",
+  DESVIO_RUTA: "#2563eb",
+  STORAGE_FULL: "#7c3aed",
+  VOLUMEN_LLENO: "#7c3aed",
+  PERDIDA_SENAL: "#6b7280",
+  HUMEDAD_CRITICA: "#0891b2",
+  ERROR_SENSOR: "#059669",
+};
+
+// Función para obtener un color consistente para un tipo de incidente
+const getColor = (type) => STATIC_COLORS[type] || getIncidentTypeColor(type);
+
+// Componente de resolución de ubicación asíncrono basado en coordenadas
+function IncidentLocation({ lat, lon }) {
+  const [address, setAddress] = useState("Cargando ubicación...");
+
+  useEffect(() => {
+    let active = true;
+    if (lat == null || lon == null) {
+      setAddress("Ubicación desconocida");
+      return;
+    }
+
+    geoService
+      .reverseGeocode(Number(lat), Number(lon))
+      .then((addr) => {
+        if (active) {
+          setAddress(addr);
+        }
+      })
+      .catch(() => {
+        if (active) {
+          setAddress(`Coord: ${Number(lat).toFixed(4)}, ${Number(lon).toFixed(4)}`);
+        }
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [lat, lon]);
+
+  return <span>📍 {address}</span>;
+}
 
 export default function EstadísticasView({ onNavigateToMap }) {
   const [filters, setFilters] = useState({
@@ -43,22 +81,42 @@ export default function EstadísticasView({ onNavigateToMap }) {
     endDate: new Date().toISOString().split("T")[0],
     vehiculoId: "",
     rutaId: "",
-    envioId: ""
+    envioId: "",
   });
 
-  const [selectedIncident, setSelectedIncident] = useState(null);
+  const { vehiculos, rutas, tipos, incidentes, resumen, loading, error, refreshEstadisticas } = useEstadisticas(filters);
 
-  const { vehiculos, rutas, tipos, ubicaciones, resumen, loading, error, refreshEstadisticas } = useEstadisticas(filters);
+  // Memoiza los datos procesados para las gráficas para evitar recálculos innecesarios
+  const { processedVehiculos, processedRutas, allIncidentTypes } = useMemo(() => {
+    const allTypes = new Set();
+    (vehiculos || []).forEach(v => {
+      if (v && v.tipos) {
+        Object.keys(v.tipos).forEach(t => allTypes.add(t));
+      }
+    });
+    (rutas || []).forEach(r => {
+      if (r && r.tipos) {
+        Object.keys(r.tipos).forEach(t => allTypes.add(t));
+      }
+    });
+    const allIncidentTypes = Array.from(allTypes);
 
-  const sanitizedUbicaciones = ubicaciones?.map((item) => ({
-    ...item,
-    latitud: item.latitud != null ? Number(item.latitud) : null,
-    longitud: item.longitud != null ? Number(item.longitud) : null
-  })) || [];
+    const processData = (data, keyField) => {
+      return data.map(item => ({
+        [keyField]: item[keyField],
+        ...allIncidentTypes.reduce((acc, type) => {
+          acc[type] = item.tipos[type] || 0;
+          return acc;
+        }, {}),
+      }));
+    };
 
-  const formatCoord = (value) => {
-    return Number.isFinite(value) ? value.toFixed(4) : "N/A";
-  };
+    return {
+      processedVehiculos: processData(vehiculos, 'vehiculo'),
+      processedRutas: processData(rutas, 'ruta'),
+      allIncidentTypes,
+    };
+  }, [vehiculos, rutas]);
 
   function getDefaultStartDate() {
     const date = new Date();
@@ -73,24 +131,6 @@ export default function EstadísticasView({ onNavigateToMap }) {
   const handleChartClick = (data, type) => {
     if (onNavigateToMap) {
       onNavigateToMap({ data, type });
-    }
-  };
-
-  const handleUbicacionClick = (location) => {
-    if (onNavigateToMap) {
-      if (location.incidentes && location.incidentes.length > 0) {
-        onNavigateToMap({
-          type: "incident",
-          incident: location.incidentes[0]
-        });
-      } else {
-        onNavigateToMap({
-          type: "ubicacion",
-          latitude: location.latitud,
-          longitude: location.longitud,
-          incidentes: location.total_incidentes
-        });
-      }
     }
   };
 
@@ -129,7 +169,7 @@ export default function EstadísticasView({ onNavigateToMap }) {
           </div>
           <div className="card">
             <h3>Tipos Registrados</h3>
-            <p className="big-number">{resumen.porTipo?.length || 0}</p>
+            <p className="big-number">{tipos?.length || 0}</p>
           </div>
           <div className="card">
             <h3>Vehículos Afectados</h3>
@@ -139,10 +179,6 @@ export default function EstadísticasView({ onNavigateToMap }) {
             <h3>Rutas Afectadas</h3>
             <p className="big-number">{rutas?.length || 0}</p>
           </div>
-          <div className="card">
-            <h3>Ubicaciones Críticas</h3>
-            <p className="big-number">{ubicaciones?.length || 0}</p>
-          </div>
         </div>
       )}
 
@@ -150,11 +186,11 @@ export default function EstadísticasView({ onNavigateToMap }) {
       <div className="charts-grid">
         {/* Gráfica de Vehículos */}
         <div className="chart-container clickable">
-          <h3>📦 Incidentes por Vehículo</h3>
-          {vehiculos?.length > 0 ? (
-            <ResponsiveContainer width="100%" height={300}>
+          <h3>📦 Incidentes por Vehículo (Desglosado)</h3>
+          {processedVehiculos?.length > 0 ? (
+            <ResponsiveContainer width="100%" height={400}>
               <BarChart
-                data={vehiculos}
+                data={processedVehiculos}
                 onClick={(state) => {
                   if (state.activeTooltipIndex !== undefined) {
                     handleChartClick(vehiculos[state.activeTooltipIndex], "vehiculo");
@@ -171,13 +207,17 @@ export default function EstadísticasView({ onNavigateToMap }) {
                 />
                 <YAxis />
                 <Tooltip cursor={{ fill: "rgba(0, 0, 0, 0.1)" }} />
-                <Bar
-                  dataKey="total_incidentes"
-                  fill="#0088FE"
-                  radius={[8, 8, 0, 0]}
-                  onClick={(data) => handleChartClick(data, "vehiculo")}
-                  style={{ cursor: "pointer" }}
-                />
+                <Legend />
+                {allIncidentTypes.map((type) => (
+                  <Bar
+                    key={type}
+                    dataKey={type}
+                    stackId="a"
+                    fill={getColor(type)}
+                    name={getIncidentTypeLabel(type)}
+                    radius={[4, 4, 0, 0]}
+                  />
+                ))}
               </BarChart>
             </ResponsiveContainer>
           ) : (
@@ -188,11 +228,11 @@ export default function EstadísticasView({ onNavigateToMap }) {
 
         {/* Gráfica de Rutas */}
         <div className="chart-container clickable">
-          <h3>🛣️ Incidentes por Ruta</h3>
-          {rutas?.length > 0 ? (
-            <ResponsiveContainer width="100%" height={300}>
+          <h3>🛣️ Incidentes por Ruta (Desglosado)</h3>
+          {processedRutas?.length > 0 ? (
+            <ResponsiveContainer width="100%" height={400}>
               <BarChart
-                data={rutas}
+                data={processedRutas}
                 onClick={(state) => {
                   if (state.activeTooltipIndex !== undefined) {
                     handleChartClick(rutas[state.activeTooltipIndex], "ruta");
@@ -209,13 +249,17 @@ export default function EstadísticasView({ onNavigateToMap }) {
                 />
                 <YAxis />
                 <Tooltip cursor={{ fill: "rgba(0, 0, 0, 0.1)" }} />
-                <Bar
-                  dataKey="total_incidentes"
-                  fill="#00C49F"
-                  radius={[8, 8, 0, 0]}
-                  onClick={(data) => handleChartClick(data, "ruta")}
-                  style={{ cursor: "pointer" }}
-                />
+                <Legend />
+                {allIncidentTypes.map((type) => (
+                  <Bar
+                    key={type}
+                    dataKey={type}
+                    stackId="a"
+                    fill={getColor(type)}
+                    name={getIncidentTypeLabel(type)}
+                    radius={[4, 4, 0, 0]}
+                  />
+                ))}
               </BarChart>
             </ResponsiveContainer>
           ) : (
@@ -225,7 +269,7 @@ export default function EstadísticasView({ onNavigateToMap }) {
         </div>
 
         {/* Gráfica de Tipos de Incidentes */}
-        <div className="chart-container">
+        <div className="chart-container full-width">
           <h3>⚠️ Distribución por Tipo</h3>
           {tipos?.length > 0 ? (
             <ResponsiveContainer width="100%" height={300}>
@@ -236,85 +280,24 @@ export default function EstadísticasView({ onNavigateToMap }) {
                   cy="50%"
                   labelLine={false}
                   label={({ tipo_incidente, total_incidentes }) =>
-                    `${tipo_incidente}: ${total_incidentes}`
+                    `${getIncidentTypeLabel(tipo_incidente)}: ${total_incidentes}`
                   }
-                  outerRadius={80}
+                  outerRadius={100}
                   fill="#8884d8"
                   dataKey="total_incidentes"
+                  nameKey="tipo_incidente"
                 >
                   {tipos.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                    <Cell key={`cell-${index}`} fill={getColor(entry.tipo_incidente)} />
                   ))}
                 </Pie>
-                <Tooltip />
+                <Tooltip formatter={(value, name) => [value, getIncidentTypeLabel(name)]} />
+                <Legend formatter={(value) => getIncidentTypeLabel(value)} />
               </PieChart>
             </ResponsiveContainer>
           ) : (
             <p className="empty-message">Sin datos disponibles</p>
           )}
-        </div>
-
-        {/* Gráfica de Ubicaciones */}
-        <div className="chart-container clickable full-width">
-          <h3>📍 Incidentes por Ubicación Geográfica</h3>
-          {sanitizedUbicaciones.length > 0 ? (
-            <ResponsiveContainer width="100%" height={300}>
-              <ScatterChart margin={{ top: 20, right: 20, bottom: 20, left: 20 }}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis
-                  type="number"
-                  dataKey="longitud"
-                  name="Longitud"
-                  tick={{ fontSize: 12 }}
-                />
-                <YAxis
-                  type="number"
-                  dataKey="latitud"
-                  name="Latitud"
-                  tick={{ fontSize: 12 }}
-                />
-                <Tooltip
-                  cursor={{ strokeDasharray: "3 3" }}
-                  content={({ active, payload }) => {
-                    if (active && payload && payload.length) {
-                      const data = payload[0].payload;
-                      return (
-                        <div className="custom-tooltip">
-                          <p><strong>Lat:</strong> {formatCoord(data.latitud)}</p>
-                          <p><strong>Lon:</strong> {formatCoord(data.longitud)}</p>
-                          <p><strong>Incidentes:</strong> {data.total_incidentes}</p>
-                          <p><strong>Tipos:</strong> {data.tipos}</p>
-                        </div>
-                      );
-                    }
-                    return null;
-                  }}
-                />
-                <Scatter
-                  name="Ubicaciones"
-                  data={sanitizedUbicaciones}
-                  fill="#FF8042"
-                  onClick={(state) => {
-                    if (state.payload) {
-                      handleUbicacionClick(state.payload);
-                    }
-                  }}
-                  style={{ cursor: "pointer" }}
-                >
-                  {sanitizedUbicaciones.map((entry, index) => (
-                    <Cell
-                      key={`cell-${index}`}
-                      fill={COLORS[index % COLORS.length]}
-                      fillOpacity={0.7}
-                    />
-                  ))}
-                </Scatter>
-              </ScatterChart>
-            </ResponsiveContainer>
-          ) : (
-            <p className="empty-message">Sin datos de ubicación disponibles</p>
-          )}
-          <p className="hint-text">💡 Haz clic en un punto para ver esa ubicación en el mapa</p>
         </div>
       </div>
 
@@ -335,7 +318,7 @@ export default function EstadísticasView({ onNavigateToMap }) {
               <tbody>
                 {tipos.map((tipo, idx) => (
                   <tr key={idx}>
-                    <td>{tipo.tipo_incidente}</td>
+                    <td>{getIncidentTypeLabel(tipo.tipo_incidente)}</td>
                     <td className="number">{tipo.total_incidentes}</td>
                     <td>{new Date(tipo.primer_incidente).toLocaleDateString()}</td>
                     <td>{new Date(tipo.ultimo_incidente).toLocaleDateString()}</td>
@@ -349,45 +332,80 @@ export default function EstadísticasView({ onNavigateToMap }) {
         )}
       </div>
 
-      {/* Tabla de Ubicaciones */}
-      <div className="details-section">
-        <h3>📍 Ubicaciones con Incidentes</h3>
-        {sanitizedUbicaciones.length > 0 ? (
+      {/* Tabla Detallada por Incidente */}
+      <div className="details-section" style={{ marginTop: "32px" }}>
+        <h3>📋 Registro de Incidentes Detallado</h3>
+        {incidentes?.length > 0 ? (
           <div className="table-wrapper">
             <table className="details-table">
               <thead>
                 <tr>
-                  <th>Latitud</th>
-                  <th>Longitud</th>
-                  <th>Total Incidentes</th>
-                  <th>Tipos</th>
-                  <th>Vehículos</th>
-                  <th>Acción</th>
+                  <th>Incidente</th>
+                  <th>Envío</th>
+                  <th>Vehículo</th>
+                  <th>Ubicación (Localidad / Ciudad)</th>
+                  <th>Valores</th>
+                  <th>Fecha y Hora</th>
                 </tr>
               </thead>
               <tbody>
-                {sanitizedUbicaciones.slice(0, 10).map((ubicacion, idx) => (
-                  <tr key={idx}>
-                    <td>{formatCoord(ubicacion.latitud)}</td>
-                    <td>{formatCoord(ubicacion.longitud)}</td>
-                    <td className="number">{ubicacion.total_incidentes}</td>
-                    <td className="small-text">{ubicacion.tipos}</td>
-                    <td className="small-text">{ubicacion.vehiculos_afectados}</td>
-                    <td>
-                      <button
-                        className="map-btn"
-                        onClick={() => handleUbicacionClick(ubicacion)}
-                      >
-                        Ver en Mapa
-                      </button>
-                    </td>
-                  </tr>
-                ))}
+                {incidentes.map((inc, idx) => {
+                  const typeColor = getColor(inc.tipo_incidente);
+                  const shipmentCode = inc.codigo_rastreo || formatShipmentId(inc.id_envio);
+                  const vehicleLabel = inc.vehiculo_placa || (inc.id_vehiculo ? `#${inc.id_vehiculo}` : "Sin asignar");
+
+                  const dateFormatted = new Date(inc.fecha_incidente).toLocaleDateString();
+                  const timeFormatted = new Date(inc.fecha_incidente).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+                  return (
+                    <tr key={inc.id_incidente || idx}>
+                      <td>
+                        <span style={{ 
+                          display: "inline-flex", 
+                          alignItems: "center", 
+                          gap: "8px", 
+                          fontWeight: 600,
+                          color: typeColor
+                        }}>
+                          <span style={{ 
+                            width: "8px", 
+                            height: "8px", 
+                            borderRadius: "50%", 
+                            backgroundColor: typeColor,
+                            display: "inline-block"
+                          }}></span>
+                          {getIncidentTypeLabel(inc.tipo_incidente)}
+                        </span>
+                      </td>
+                      <td>
+                        <strong style={{ color: "var(--color-primary)" }}>{shipmentCode}</strong>
+                      </td>
+                      <td>{vehicleLabel}</td>
+                      <td>
+                        <span style={{ fontSize: "0.9rem", color: "var(--color-text-secondary)" }}>
+                          <IncidentLocation lat={inc.latitud} lon={inc.longitud} />
+                        </span>
+                      </td>
+                      <td>
+                        {inc.valor_registrado != null ? (
+                          <span style={{ fontSize: "0.9rem" }}>
+                            {inc.valor_registrado} (Límite: {inc.valor_limite || "N/A"})
+                          </span>
+                        ) : (
+                          <span style={{ color: "var(--color-text-tertiary)" }}>—</span>
+                        )}
+                      </td>
+                      <td>
+                        <span style={{ whiteSpace: "nowrap" }}>{dateFormatted} {timeFormatted}</span>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
         ) : (
-          <p className="empty-message">Sin datos de ubicación disponibles</p>
+          <p className="empty-message">Sin datos de incidentes disponibles</p>
         )}
       </div>
     </div>
