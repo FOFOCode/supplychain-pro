@@ -4,7 +4,7 @@
  * Permite navegar al mapa haciendo clic en los datos.
  */
 
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo } from "react";
 import {
   BarChart,
   Bar,

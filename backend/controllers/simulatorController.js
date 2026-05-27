@@ -1,5 +1,5 @@
 const axios = require("axios");
-const { emitEvent } = require('../socket');
+const db = require('../config/db');
 
 const SIMULATOR_URL = process.env.SIMULATOR_URL || "http://localhost:3001";
 const SIMULATOR_API = `${SIMULATOR_URL}/api/simulator`;
