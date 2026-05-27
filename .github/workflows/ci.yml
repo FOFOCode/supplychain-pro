@@ -179,13 +179,23 @@ jobs:
       - name: Wait for services to be ready
         run: |
           echo "Waiting for services to be fully healthy..."
-          sleep 15
-          # Retrying until backend is up
-          for i in {1..30}; do
-            curl -s http://localhost:5001/api/envios > /dev/null && break
-            echo "Waiting for backend..."
+          # Allow more time for DB migrations / image startup in CI
+          sleep 10
+          for i in {1..60}; do
+            if curl -sSf http://localhost:5001/health >/dev/null 2>&1; then
+              echo "Backend is healthy"
+              break
+            fi
+            echo "Waiting for backend to become healthy... ($i/60)"
             sleep 2
           done
+          # If still not healthy, print service status and recent logs to help debugging
+          if ! curl -sSf http://localhost:5001/health >/dev/null 2>&1; then
+            echo "Backend did not become healthy in time. Showing Docker Compose status and backend logs..."
+            docker compose ps
+            docker compose logs --no-color --tail=200 supplychainpro-backend || true
+            exit 1
+          fi
 
       - name: Set up Python
         uses: actions/setup-python@v5
