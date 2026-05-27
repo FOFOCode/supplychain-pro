@@ -217,3 +217,13 @@ jobs:
           ADMIN_EMAIL: admin@test.local
           ADMIN_PASSWORD: admin123
         run: pytest -v
+
+      - name: Tear down Docker Environment
+        if: ${{ always() }}
+        run: |
+          echo "Tearing down Docker Compose environment (always runs)"
+          # Print a small tail of logs to help post-mortem debugging, then bring the environment down
+          docker compose logs --no-color --tail=200 || true
+          docker compose down --volumes --remove-orphans || true
+          # Try a light prune to free runner disk (best-effort)
+          docker system prune -af --volumes || true
