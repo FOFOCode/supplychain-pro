@@ -255,6 +255,24 @@ async function finalizarViaje(id_envio) {
 }
 
 /**
+ * Cancela un viaje en curso
+ */
+async function cancelarViaje(id_envio) {
+  const journey = activeJourneys.get(id_envio);
+  if (!journey) return;
+
+  if (journey.telemetryInterval) {
+    clearInterval(journey.telemetryInterval);
+    journey.telemetryInterval = null;
+  }
+
+  journey.estado = "CANCELADO";
+  persistJourneys();
+  console.log(`\n✖ Viaje cancelado para envío ${id_envio}`);
+  await actualizarEstadoEnvio(id_envio, "CANCELADO");
+}
+
+/**
  * Inicia el viaje de un envío
  */
 async function iniciarViaje(id_envio, id_ruta, tempMin, tempMax, waypoints) {
@@ -332,6 +350,7 @@ module.exports = {
   activeJourneys,
   iniciarViaje,
   finalizarViaje,
+  cancelarViaje,
   iniciarTelemetria,
   enviarTelemetria,
   persistJourneys,

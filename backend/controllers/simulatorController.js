@@ -6,13 +6,28 @@ const SIMULATOR_API = `${SIMULATOR_URL}/api/simulator`;
 
 async function forwardRequest(method, path, data) {
   const url = `${SIMULATOR_API}${path}`;
-  const response = await axios({
-    method,
-    url,
-    data,
-    timeout: 10000,
-  });
-  return response;
+  try {
+    const response = await axios({
+      method,
+      url,
+      data,
+      timeout: 10000,
+    });
+    return response;
+  } catch (err) {
+    // If the simulator responded with an error status, return that response object
+    if (err && err.response) {
+      // log for debugging
+      console.error(`Simulator error ${method.toUpperCase()} ${url}:`, {
+        status: err.response.status,
+        data: err.response.data,
+      });
+      return err.response;
+    }
+    // network or other error
+    console.error(`Simulator request failed ${method.toUpperCase()} ${url}:`, err && err.message ? err.message : err);
+    throw err;
+  }
 }
 
 /**

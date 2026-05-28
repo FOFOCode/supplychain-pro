@@ -621,8 +621,10 @@ function App() {
     try {
       const payload = await fetchApi(`/simulator/journeys/${selectedEnvioId}`);
       setJourneyProgress(payload);
+      return payload;
     } catch {
       setJourneyProgress(null);
+      return null;
     }
   }, [fetchApi, selectedEnvioId, token]);
 
@@ -723,6 +725,12 @@ function App() {
       await fetchApi(`/simulator/journeys/${selectedEnvio.id_envio}/stop`, {
         method: "POST",
       });
+      // Refresh journey status immediately after stop
+      const updated = await loadJourneyStatus();
+      if (!updated) {
+        // If simulator did not return a status, mark locally as canceled
+        setJourneyProgress((prev) => ({ ...(prev || {}), estado: "CANCELADO", progreso: 0 }));
+      }
       setMessage("Viaje detenido");
       pushEvent("system", {
         message: "Viaje detenido",
