@@ -53,6 +53,7 @@ export default function Navbar({
         <nav className="app-nav">
           <Link to="/" className="app-nav-link">⚙ Simulador</Link>
           <Link to="/dashboard" className="app-nav-link active">🗺 Dashboard</Link>
+          <Link to="/monitoring" className="app-nav-link">📊 Monitoreo</Link>
         </nav>
         <div className="live-indicator">
           <span className="live-dot"></span>

@@ -47,6 +47,9 @@ services:
     ports:
       # Puerto publicado del host separado del puerto interno de la app
       - "${BACKEND_HOST_PORT:-5001}:5000"
+    volumes:
+      - backend-logs:/var/log/backend
+      - fail2ban-logs:/var/log/fail2ban:ro
     restart: unless-stopped
     networks:
       - supplychain-net
@@ -113,11 +116,75 @@ services:
     networks:
       - supplychain-net
 
+  # ── Monitoreo: Fail2ban ───────────────────────────────────────────────────
+  monitoring-fail2ban:
+    image: crazymax/fail2ban:latest
+    # NET_ADMIN y NET_RAW permiten gestionar iptables dentro del contenedor
+    # sin necesitar network_mode: host, preservando el aislamiento de Docker.
+    cap_add:
+      - NET_ADMIN
+      - NET_RAW
+    # Asegura que el archivo de log exista y tenga permisos de escritura para el usuario del backend
+    entrypoint: /bin/sh -c "mkdir -p /var/log/backend /var/log/fail2ban && touch /var/log/backend/access.log /var/log/fail2ban/fail2ban.log && chmod 777 /var/log/backend /var/log/fail2ban && chmod 666 /var/log/backend/access.log /var/log/fail2ban/fail2ban.log && exec /entrypoint.sh fail2ban-server -f -x start"
+    environment:
+      TZ: America/El_Salvador
+      F2B_LOG_TARGET: /var/log/fail2ban/fail2ban.log
+      F2B_LOG_LEVEL: INFO
+      F2B_DB_PURGE_AGE: 1d
+
+    volumes:
+      # Configuración de jails y filtros personalizados
+      - ./monitoring/fail2ban/jail.local:/etc/fail2ban/jail.local:ro
+      - ./monitoring/fail2ban/filter.d:/etc/fail2ban/filter.d:ro
+      # Logs del backend que fail2ban leerá para detectar ataques (montado read-write para permitir chown/chmod en la inicialización)
+      - backend-logs:/var/log/backend
+      # Log propio de fail2ban (leído por el endpoint /api/monitoring/status)
+      - fail2ban-logs:/var/log/fail2ban
+    restart: unless-stopped
+    networks:
+      - supplychain-net
+
+  # ── Monitoreo: Munin Node (recolector de métricas del host) ───────────────
+  monitoring-munin-node:
+    build: ./monitoring/munin-node
+    restart: unless-stopped
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:rw
+    networks:
+      - supplychain-net
+
+  # ── Monitoreo: Munin Server (generador de gráficas HTML) ──────────────────
+  monitoring-munin-server:
+    image: dockurr/munin:latest
+    depends_on:
+      - monitoring-munin-node
+    environment:
+      NODES: "backend:monitoring-munin-node"
+    volumes:
+      - munin-data:/var/lib/munin
+      - munin-cache:/var/www/html
+    # Puerto 8081 disponible internamente; en producción acceder vía SSH tunnel
+    ports:
+      - "8081:80"
+    restart: unless-stopped
+    networks:
+      - supplychain-net
+
 volumes:
   supplychain-db-data:
     name: supplychain-db-data
   simulator-state:
     name: simulator-state
+  # Logs del backend compartidos entre el contenedor Node.js y fail2ban
+  backend-logs:
+    name: supplychain-backend-logs
+  # Log propio de fail2ban expuesto al backend para el endpoint de monitoreo
+  fail2ban-logs:
+    name: supplychain-fail2ban-logs
+  munin-data:
+    name: supplychain-munin-data
+  munin-cache:
+    name: supplychain-munin-cache
 
 networks:
   supplychain-net:

@@ -1,7 +1,10 @@
 require("dotenv").config(); //Cargar variables d entorno
 const http = require("http");
+const fs = require("fs");
+const path = require("path");
 const express = require("express"); //Crear servidor web
 const cors = require("cors"); //Para permitir solicitudes desde otro dominio
+const morgan = require("morgan"); //Logging de acceso HTTP (leído por fail2ban)
 const swaggerUi = require("swagger-ui-express");
 const bcrypt = require("bcrypt");
 
@@ -20,12 +23,12 @@ const usuariosRoutes = require("./routes/usuarios");
 const rutasRoutes = require("./routes/rutas");
 const simulatorRoutes = require("./routes/simulator");
 const estadisticasRoutes = require("./routes/estadisticas");
+const monitoringRoutes = require("./routes/monitoring");
 const { initSocket } = require("./socket");
 
 const app = express(); //Instancia del servidor
 const allowedOrigins = (
-  process.env.CORS_ORIGINS ||
-  "http://localhost:5173,http://127.0.0.1:5173,http://localhost:5174,http://127.0.0.1:5174,http://localhost:5001,http://localhost:3000"
+  process.env.CORS_ORIGINS || "http://localhost:5173,http://127.0.0.1:5173"
 ).split(",");
 
 app.use(
@@ -33,12 +36,12 @@ app.use(
     origin: function (origin, callback) {
       // Permitir solicitudes sin origin (como curl o Postman)
       if (!origin) return callback(null, true);
-      
+
       // En desarrollo, permitir cualquier origen para facilitar testing
       if (process.env.NODE_ENV !== "production") {
         return callback(null, true);
       }
-      
+
       // En producción, usar lista blanca
       if (allowedOrigins.includes(origin)) {
         return callback(null, true);
@@ -53,7 +56,43 @@ app.use(
     allowedHeaders: ["Content-Type", "Authorization"],
   }),
 );
-app.use(express.json()); //Recibir los datos en JSON
+
+app.use(express.json()); // Recibir los datos en JSON
+
+// ── HTTP Access Log (leído por fail2ban para detectar ataques) ───────────────
+// En desarrollo también escribe a archivo si el volumen está disponible.
+const LOG_DIR = process.env.BACKEND_LOG_DIR || "/var/log/backend";
+const shouldLogToFile = process.env.BACKEND_LOG_TO_FILE !== "false";
+
+if (shouldLogToFile) {
+  try {
+    if (!fs.existsSync(LOG_DIR)) {
+      fs.mkdirSync(LOG_DIR, { recursive: true });
+    }
+    const logPath = path.join(LOG_DIR, "access.log");
+    const accessLogStream = fs.createWriteStream(logPath, { flags: "a" });
+
+    // Si hay un error en el stream (como EACCES diferido), lo manejamos para que no tire el proceso
+    accessLogStream.on("error", (err) => {
+      console.error(
+        `Error de escritura en access.log: ${err.message}. Redireccionando a consola.`,
+      );
+    });
+
+    app.use(morgan("combined", { stream: accessLogStream }));
+    console.log(`Logs de acceso HTTP configurados en: ${logPath}`);
+  } catch (err) {
+    console.error(
+      `No se pudo inicializar el archivo de logs (${err.message}). Usando log de consola.`,
+    );
+    app.use(morgan("combined"));
+  }
+}
+
+if (process.env.NODE_ENV !== "production") {
+  // Desarrollo: log conciso a consola
+  app.use(morgan("dev"));
+}
 
 app.use(
   "/api-docs",
@@ -95,6 +134,7 @@ app.use("/api/usuarios", usuariosRoutes);
 app.use("/api/rutas", rutasRoutes);
 app.use("/api/simulator", simulatorRoutes);
 app.use("/api/estadisticas", estadisticasRoutes);
+app.use("/api/monitoring", monitoringRoutes);
 
 const verifyDbConnection = async () => {
   try {
@@ -112,28 +152,32 @@ const ensureAdminUser = async () => {
   const nombreCompleto = process.env.ADMIN_NAME || "Administrador";
 
   if (!correo || !contrasena) {
-    console.warn("ADMIN_EMAIL/ADMIN_PASSWORD no configurados; se omite seed de admin.");
+    console.warn(
+      "ADMIN_EMAIL/ADMIN_PASSWORD no configurados; se omite seed de admin.",
+    );
     return;
   }
 
   await db.query(
-    "INSERT IGNORE INTO roles (id_rol, nombre, descripcion) VALUES (1, 'ADMIN', 'Administrador (CRUD completo)'), (2, 'USUARIO', 'Usuario de solo lectura')"
+    "INSERT IGNORE INTO roles (id_rol, nombre, descripcion) VALUES (1, 'ADMIN', 'Administrador (CRUD completo)'), (2, 'USUARIO', 'Usuario de solo lectura')",
   );
 
   const [existing] = await db.query(
     "SELECT id_usuario, contrasena_hash FROM usuarios WHERE correo = ? LIMIT 1",
-    [correo]
+    [correo],
   );
 
   const hash = await bcrypt.hash(contrasena, 10);
 
   if (existing.length) {
     const currentHash = existing[0].contrasena_hash;
-    const matches = currentHash ? await bcrypt.compare(contrasena, currentHash) : false;
+    const matches = currentHash
+      ? await bcrypt.compare(contrasena, currentHash)
+      : false;
     if (!matches) {
       await db.query(
         "UPDATE usuarios SET contrasena_hash = ?, activo = true WHERE id_usuario = ?",
-        [hash, existing[0].id_usuario]
+        [hash, existing[0].id_usuario],
       );
       console.log(`Admin actualizado: ${correo}`);
     }
@@ -142,7 +186,7 @@ const ensureAdminUser = async () => {
 
   await db.query(
     "INSERT INTO usuarios (id_rol, nombre_completo, correo, contrasena_hash, activo) VALUES (?, ?, ?, ?, true)",
-    [1, nombreCompleto, correo, hash]
+    [1, nombreCompleto, correo, hash],
   );
   console.log(`Admin creado: ${correo}`);
 };

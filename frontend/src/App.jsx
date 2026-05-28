@@ -861,7 +861,9 @@ function App() {
   <nav className="app-nav">
     <Link to="/" className="app-nav-link active">⚙ Simulador</Link>
     <Link to="/dashboard" className="app-nav-link">🗺 Dashboard</Link>
+    <Link to="/monitoring" className="app-nav-link">📊 Monitoreo</Link>
   </nav>
+
 
   {token && user ? (
     <div className="header-actions">

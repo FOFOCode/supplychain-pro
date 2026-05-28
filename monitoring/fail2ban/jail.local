@@ -1,0 +1,30 @@
+# Fail2ban jail personalizado para SupplyChain Pro
+# Detecta ataques de fuerza bruta al endpoint /api/auth/login
+# y escaneos masivos de rutas inexistentes (404).
+
+[DEFAULT]
+# Ban durante 1 hora después de 5 fallos en 10 minutos
+bantime  = 3600
+findtime = 600
+maxretry = 5
+# Backend: usa iptables para bloquear la IP a nivel de red
+backend  = auto
+
+# ─── Jail: Fuerza bruta en el login del API ───────────────────────────────────
+[backend-brute]
+enabled  = true
+port     = 5000,5001
+filter   = backend-brute
+logpath  = /var/log/backend/access.log
+maxretry = 5
+
+# ─── Jail: Escaneo masivo de rutas (404 spam) ─────────────────────────────────
+[backend-scan]
+enabled  = true
+port     = 5000,5001
+filter   = backend-scan
+logpath  = /var/log/backend/access.log
+# Más permisivo: 20 errores 404 en 5 minutos
+maxretry = 20
+findtime = 300
+bantime  = 7200
