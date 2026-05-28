@@ -19,6 +19,7 @@ const rolesRoutes = require("./routes/roles");
 const usuariosRoutes = require("./routes/usuarios");
 const rutasRoutes = require("./routes/rutas");
 const simulatorRoutes = require("./routes/simulator");
+const estadisticasRoutes = require("./routes/estadisticas");
 const { initSocket } = require("./socket");
 
 const app = express(); //Instancia del servidor
@@ -84,6 +85,8 @@ app.use("/api/vehiculos", vehiculosRoutes);
 app.use("/api/envios-vehiculos", enviosVehiculosRoutes);
 app.use("/api/registros", registrosRoutes);
 app.use("/api/registrosTelemetria", registrosRoutes);
+// Alias histórico: algunos tests y clientes usan /api/telemetria
+app.use("/api/telemetria", registrosRoutes);
 app.use("/api/incidentes", incidentesRoutes);
 app.use("/api/productos", productosRoutes);
 app.use("/api/detalles-envio", detallesEnvioRoutes);
@@ -91,6 +94,7 @@ app.use("/api/roles", rolesRoutes);
 app.use("/api/usuarios", usuariosRoutes);
 app.use("/api/rutas", rutasRoutes);
 app.use("/api/simulator", simulatorRoutes);
+app.use("/api/estadisticas", estadisticasRoutes);
 
 const verifyDbConnection = async () => {
   try {

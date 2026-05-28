@@ -23,6 +23,8 @@ export function useIncidents(vehiculoId = null) {
       TEMPERATURA_CRITICA: "critico",
       BATERIA_BAJA: "advertencia",
       GEOFENCE_VIOLATION: "advertencia",
+      OUT_OF_BOUNDS: "advertencia",
+      STORAGE_FULL: "informativo",
       PERDIDA_SENAL: "advertencia",
       HUMEDAD_CRITICA: "critico",
       ERROR_SENSOR: "informativo",

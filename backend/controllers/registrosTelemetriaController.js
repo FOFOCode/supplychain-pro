@@ -19,6 +19,27 @@ exports.createRegistro = async (req, res, next) => {
     ) {
       return res.status(400).json({ error: 'Faltan campos obligatorios de telemetria' });
     }
+    // Validaciones de rango
+    const lat = Number(latitud);
+    const lon = Number(longitud);
+    if (Number.isNaN(lat) || lat < -90 || lat > 90) {
+      return res.status(400).json({ error: 'Latitud fuera de rango' });
+    }
+    if (Number.isNaN(lon) || lon < -180 || lon > 180) {
+      return res.status(400).json({ error: 'Longitud fuera de rango' });
+    }
+    if (porcentaje_bateria !== undefined && porcentaje_bateria !== null) {
+      const pb = Number(porcentaje_bateria);
+      if (Number.isNaN(pb) || pb < 0 || pb > 100) {
+        return res.status(400).json({ error: 'Porcentaje de batería fuera de rango' });
+      }
+    }
+
+    // Verificar existencia del envío antes de insertar (mejor UX y para tests)
+    const [envioRowsCheck] = await db.query('SELECT id_envio FROM envios WHERE id_envio = ?', [id_envio]);
+    if (envioRowsCheck.length === 0) {
+      return res.status(404).json({ error: 'Envío no encontrado' });
+    }
     const timestamp = toMysqlTimestamp(marca_tiempo_dispositivo) || toMysqlTimestamp(new Date());
     const [result] = await db.query(
       'INSERT INTO registros_telemetria (id_envio, latitud, longitud, temperatura, humedad, porcentaje_bateria, marca_tiempo_dispositivo) VALUES (?, ?, ?, ?, ?, ?, ?)',
@@ -57,7 +78,7 @@ exports.createRegistro = async (req, res, next) => {
           if (existingIncident.length === 0) {
             const [incResult] = await db.query(
               'INSERT INTO incidentes (id_envio, id_registro_telemetria, tipo_incidente, valor_registrado, valor_limite, descripcion, origen_evento) VALUES (?, ?, ?, ?, ?, ?, ?)',
-              [id_envio, result.insertId, 'RUPTURA_CADENA_FRIO', tempVal, tempVal > tMax ? tMax : tMin, 'Temperatura excedió los límites permitidos (Generado por el Backend)', 'SISTEMA']
+              [id_envio, result.insertId, 'RUPTURA_CADENA_FRIO', tempVal, tempVal > tMax ? tMax : tMin, 'Temperatura excedió los límites permitidos (Generado por el Backend)', 'SIMULADOR']
             );
             if (envio.estado !== 'INCIDENTE_REPORTADO') {
               await db.query('UPDATE envios SET estado = ? WHERE id_envio = ?', ['INCIDENTE_REPORTADO', id_envio]);
@@ -88,7 +109,7 @@ exports.createRegistro = async (req, res, next) => {
             if (existingBatIncident.length === 0) {
               const [incResult] = await db.query(
                 'INSERT INTO incidentes (id_envio, id_registro_telemetria, tipo_incidente, valor_registrado, valor_limite, descripcion, origen_evento) VALUES (?, ?, ?, ?, ?, ?, ?)',
-                [id_envio, result.insertId, 'BATERIA_BAJA', batVal, 10, 'Batería baja en dispositivo de monitoreo (Generado por el Backend)', 'SISTEMA']
+                [id_envio, result.insertId, 'BATERIA_BAJA', batVal, 10, 'Batería baja en dispositivo de monitoreo (Generado por el Backend)', 'SIMULADOR']
               );
               if (envio.estado !== 'INCIDENTE_REPORTADO') {
                 await db.query('UPDATE envios SET estado = ? WHERE id_envio = ?', ['INCIDENTE_REPORTADO', id_envio]);
