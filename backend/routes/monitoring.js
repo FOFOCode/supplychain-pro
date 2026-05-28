@@ -86,7 +86,14 @@ function queryMuninNode(host, port, timeoutMs = 5000) {
         const line = buffer.trim();
         buffer = "";
         // Filtramos plugins relevantes para el panel
-        const wanted = ["cpu", "memory", "df", "load", "uptime"];
+        const wanted = [
+          "cpu",
+          "memory",
+          "df",
+          "load",
+          "uptime",
+          "docker_stats_",
+        ];
         plugins = line
           .split(" ")
           .filter((p) => wanted.some((w) => p.startsWith(w)));

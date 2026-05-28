@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import { useAuth } from "../dashboard/hooks/useAuth.js";
 import "../App.css";
 
-const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:5001/api";
+const API_BASE = import.meta.env.VITE_API_BASE || "/api";
 
 export default function MonitoringApp() {
   const { user, token, logout, isAuthenticated } = useAuth();
@@ -170,6 +170,23 @@ export default function MonitoringApp() {
         ? diskUsed
         : (diskUsed / diskTotal) * 100
       : 0;
+
+  const containerMetrics = Object.keys(metrics).reduce((acc, key) => {
+    if (!key.startsWith("docker_stats_")) return acc;
+    const [plugin, field] = key.split(".");
+    if (!acc[plugin]) {
+      acc[plugin] = {
+        name: plugin.replace("docker_stats_", ""),
+        cpu: 0,
+        memory: 0,
+        disk: 0,
+      };
+    }
+    acc[plugin][field] = metrics[key];
+    return acc;
+  }, {});
+
+  const containerMetricsList = Object.values(containerMetrics);
 
   return (
     <div className="app-shell">
@@ -687,6 +704,96 @@ export default function MonitoringApp() {
                     </div>
                   </div>
                 </div>
+
+                {containerMetricsList.length > 0 ? (
+                  <div>
+                    <div
+                      style={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                        marginBottom: "16px",
+                      }}
+                    >
+                      <div
+                        className="card-title"
+                        style={{ margin: 0, fontSize: "1rem" }}
+                      >
+                        Contenedores Docker
+                      </div>
+                      <span className="muted" style={{ fontSize: "0.85rem" }}>
+                        Métricas por contenedor
+                      </span>
+                    </div>
+                    <div
+                      style={{
+                        display: "grid",
+                        gridTemplateColumns:
+                          "repeat(auto-fit, minmax(220px, 1fr))",
+                        gap: "16px",
+                      }}
+                    >
+                      {containerMetricsList.map((item) => (
+                        <div
+                          key={item.name}
+                          style={{
+                            background: "#faf6f1",
+                            padding: "16px",
+                            borderRadius: "12px",
+                            border: "1px solid #efe4d9",
+                          }}
+                        >
+                          <div
+                            style={{
+                              display: "flex",
+                              justifyContent: "space-between",
+                              marginBottom: "10px",
+                            }}
+                          >
+                            <span
+                              className="muted"
+                              style={{ fontWeight: 600, fontSize: "0.9rem" }}
+                            >
+                              {item.name}
+                            </span>
+                            <strong style={{ color: "var(--ink-strong)" }}>
+                              {item.cpu.toFixed(1)}%
+                            </strong>
+                          </div>
+                          <div className="storage-meter">
+                            <div
+                              className={`storage-fill ${item.cpu > 80 ? "full" : ""}`}
+                              style={{ width: `${Math.min(item.cpu, 100)}%` }}
+                            />
+                          </div>
+                          <div
+                            style={{
+                              display: "grid",
+                              gridTemplateColumns: "1fr 1fr",
+                              gap: "8px",
+                              marginTop: "12px",
+                              fontSize: "0.8rem",
+                            }}
+                            className="muted"
+                          >
+                            <div>
+                              <strong>{item.memory.toFixed(1)}%</strong>
+                              <div>RAM</div>
+                            </div>
+                            <div>
+                              <strong>{item.disk.toFixed(1)}%</strong>
+                              <div>Disco</div>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="info-banner">
+                    No se detectaron métricas de contenedores Docker en Munin.
+                  </div>
+                )}
 
                 <div
                   style={{

@@ -54,7 +54,6 @@ services:
     networks:
       - supplychain-net
 
-
   supplychainpro-simulator:
     build: ./simulator
     env_file:
@@ -149,6 +148,8 @@ services:
   monitoring-munin-node:
     build: ./monitoring/munin-node
     restart: unless-stopped
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:rw
     networks:
       - supplychain-net
 
@@ -168,7 +169,6 @@ services:
     restart: unless-stopped
     networks:
       - supplychain-net
-
 
 volumes:
   supplychain-db-data:
