@@ -9,29 +9,30 @@ fi
 
 case "$PROG" in
   docker_stats_backend)
-    TARGET=supplychain-pro-supplychainpro-backend-1
+    SEARCH="supplychainpro-backend"
     ;;
   docker_stats_frontend)
-    TARGET=supplychain-pro-supplychainpro-frontend-1
+    SEARCH="supplychainpro-frontend"
     ;;
   docker_stats_db)
-    TARGET=supplychain-pro-supplychainpro-db-1
+    SEARCH="supplychainpro-db"
     ;;
   docker_stats_simulator)
-    TARGET=supplychain-pro-supplychainpro-simulator-1
+    SEARCH="supplychainpro-simulator"
     ;;
   *)
-    TARGET=${PROG#docker_stats_}
+    # Para plugins nombrados genéricamente, busca por el sufijo del nombre
+    SEARCH=${PROG#docker_stats_}
     ;;
 esac
 
 DOCKER_BIN="/usr/bin/docker"
 
-# Detect actual container name in Docker Compose project.
-container=$($DOCKER_BIN ps --format '{{.Names}}' | grep "$TARGET" | head -n 1 || true)
+# Busca el contenedor que contenga el nombre del servicio en cualquier proyecto de Docker Compose
+container=$($DOCKER_BIN ps --format '{{.Names}}' | grep "$SEARCH" | head -n 1 || true)
 
 if [ -z "$container" ]; then
-  container=$TARGET
+  container=$SEARCH
 fi
 
 arg="${1:-}"

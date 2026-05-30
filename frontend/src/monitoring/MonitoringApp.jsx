@@ -104,7 +104,7 @@ export default function MonitoringApp() {
               <p className="kicker">Acceso restringido</p>
               <h2>Panel de Monitoreo</h2>
               <p>
-                Inicia sesión para ver el estado de Pingdom, Fail2ban y Munin.
+                Inicia sesión para ver el estado de UptimeRobot, Fail2ban y Munin.
               </p>
             </div>
             {loginError && <div className="alert error">{loginError}</div>}
@@ -268,11 +268,12 @@ export default function MonitoringApp() {
           className="simulation-layout"
           style={{ gridTemplateColumns: "1fr 1fr", gap: "24px" }}
         >
-          {/* SECCIÓN PINGDOM */}
+          {/* SECCIÓN UPTIMEROBOT */}
           <div
             className="panel-card"
             style={{ display: "flex", flexDirection: "column", gap: "16px" }}
           >
+            {/* Header */}
             <div
               style={{
                 display: "flex",
@@ -281,82 +282,205 @@ export default function MonitoringApp() {
               }}
             >
               <div className="card-title" style={{ margin: 0 }}>
-                🟢 Uptime (Pingdom)
+                🟢 Uptime (UptimeRobot)
               </div>
-              {data?.pingdom?.status === "up" ? (
+              {data?.uptimerobot?.status === "up" ? (
                 <span
                   className="status-pill"
                   style={{ background: "#e9f7ec", color: "#1d5b35" }}
                 >
                   Todo Operativo
                 </span>
-              ) : data?.pingdom?.status === "down" ? (
+              ) : data?.uptimerobot?.status === "down" ? (
                 <span className="status-pill blocked">Alerta de Caída</span>
               ) : (
                 <span className="status-pill">Sin Configurar</span>
               )}
             </div>
 
-            {data?.pingdom?.status === "unconfigured" ? (
+            {data?.uptimerobot?.status === "unconfigured" ? (
               <div className="info-banner">
-                Configure la variable <code>PINGDOM_API_TOKEN</code> en el
+                Configure la variable <code>UPTIMEROBOT_API_KEY</code> en el
                 backend para habilitar la visualización del estado de sus
                 endpoints.
               </div>
             ) : (
-              <div style={{ display: "grid", gap: "12px" }}>
-                {data?.pingdom?.checks?.map((check) => (
+              <>
+                {/* Resumen global de monitores */}
+                {data?.uptimerobot?.summary && (
                   <div
-                    key={check.id}
                     style={{
+                      display: "grid",
+                      gridTemplateColumns: "repeat(4, 1fr)",
+                      gap: "10px",
+                    }}
+                  >
+                    {[
+                      { label: "Total", value: data.uptimerobot.summary.total, color: "var(--ink-strong)" },
+                      { label: "Activos", value: data.uptimerobot.summary.up, color: "#1d5b35" },
+                      { label: "Caídos", value: data.uptimerobot.summary.down, color: "#c0392b" },
+                      { label: "Pausados", value: data.uptimerobot.summary.paused, color: "#7f8c8d" },
+                    ].map(({ label, value, color }) => (
+                      <div
+                        key={label}
+                        style={{
+                          background: "#faf6f1",
+                          border: "1px solid #efe4d9",
+                          borderRadius: "10px",
+                          padding: "10px",
+                          textAlign: "center",
+                        }}
+                      >
+                        <strong style={{ display: "block", fontSize: "1.4rem", color }}>
+                          {value ?? "—"}
+                        </strong>
+                        <span className="muted" style={{ fontSize: "0.75rem" }}>
+                          {label}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Uptime promedio global 7 días */}
+                {data?.uptimerobot?.summary?.avg_uptime_7d != null && (
+                  <div
+                    style={{
+                      background: "#f0faf4",
+                      border: "1px solid #b7e0c6",
+                      borderRadius: "10px",
+                      padding: "12px 16px",
                       display: "flex",
                       justifyContent: "space-between",
                       alignItems: "center",
-                      padding: "12px",
-                      background: "#faf6f1",
-                      borderRadius: "12px",
-                      border: "1px solid #efe4d9",
                     }}
                   >
-                    <div>
-                      <strong
-                        style={{ display: "block", color: "var(--ink-strong)" }}
+                    <span className="muted" style={{ fontSize: "0.85rem", fontWeight: 600 }}>
+                      📈 Uptime promedio (últimos 7 días)
+                    </span>
+                    <strong style={{ fontSize: "1.1rem", color: "#1d5b35" }}>
+                      {data.uptimerobot.summary.avg_uptime_7d}%
+                    </strong>
+                  </div>
+                )}
+
+                {/* Tarjetas por monitor */}
+                <div style={{ display: "grid", gap: "12px" }}>
+                  {data?.uptimerobot?.checks?.map((check) => (
+                    <div
+                      key={check.id}
+                      style={{
+                        padding: "14px",
+                        background: "#faf6f1",
+                        borderRadius: "12px",
+                        border: `1px solid ${check.status === "down" ? "#f5c6cb" : "#efe4d9"}`,
+                      }}
+                    >
+                      {/* Fila superior: nombre + estado */}
+                      <div
+                        style={{
+                          display: "flex",
+                          justifyContent: "space-between",
+                          alignItems: "flex-start",
+                          marginBottom: "10px",
+                        }}
                       >
-                        {check.name}
-                      </strong>
-                      <span className="muted" style={{ fontSize: "0.8rem" }}>
-                        {check.hostname}
-                      </span>
-                    </div>
-                    <div style={{ textAlign: "right" }}>
-                      <span
-                        className={`status-pill ${check.status === "up" ? "reachable" : "blocked"}`}
-                        style={{ fontSize: "0.75rem", padding: "2px 8px" }}
-                      >
-                        {check.status.toUpperCase()}
-                      </span>
-                      {check.last_response_time && (
-                        <div
-                          className="muted"
-                          style={{ fontSize: "0.8rem", marginTop: "4px" }}
+                        <div>
+                          <strong style={{ display: "block", color: "var(--ink-strong)", fontSize: "0.95rem" }}>
+                            {check.name}
+                          </strong>
+                          <span className="muted" style={{ fontSize: "0.75rem", wordBreak: "break-all" }}>
+                            {check.hostname}
+                          </span>
+                        </div>
+                        <span
+                          className={`status-pill ${check.status === "up" ? "reachable" : "blocked"}`}
+                          style={{ fontSize: "0.75rem", padding: "2px 10px", whiteSpace: "nowrap", marginLeft: "8px" }}
                         >
-                          {check.last_response_time} ms
+                          {check.status.toUpperCase()}
+                        </span>
+                      </div>
+
+                      {/* Fila de métricas: tiempo de respuesta, uptime 7d, 30d */}
+                      <div
+                        style={{
+                          display: "grid",
+                          gridTemplateColumns: "repeat(3, 1fr)",
+                          gap: "8px",
+                          fontSize: "0.8rem",
+                        }}
+                      >
+                        <div
+                          style={{
+                            background: "#fff",
+                            border: "1px solid #efe4d9",
+                            borderRadius: "8px",
+                            padding: "8px",
+                            textAlign: "center",
+                          }}
+                        >
+                          <strong style={{ display: "block", fontSize: "1rem", color: "var(--ink-strong)" }}>
+                            {check.avg_response_time != null ? `${check.avg_response_time} ms` : "—"}
+                          </strong>
+                          <span className="muted">Resp. Promedio</span>
+                        </div>
+                        <div
+                          style={{
+                            background: "#fff",
+                            border: "1px solid #efe4d9",
+                            borderRadius: "8px",
+                            padding: "8px",
+                            textAlign: "center",
+                          }}
+                        >
+                          <strong
+                            style={{
+                              display: "block",
+                              fontSize: "1rem",
+                              color: check.uptime_7d >= 99 ? "#1d5b35" : check.uptime_7d >= 95 ? "#e67e22" : "#c0392b",
+                            }}
+                          >
+                            {check.uptime_7d != null ? `${check.uptime_7d}%` : "—"}
+                          </strong>
+                          <span className="muted">Uptime 7d</span>
+                        </div>
+                        <div
+                          style={{
+                            background: "#fff",
+                            border: "1px solid #efe4d9",
+                            borderRadius: "8px",
+                            padding: "8px",
+                            textAlign: "center",
+                          }}
+                        >
+                          <strong
+                            style={{
+                              display: "block",
+                              fontSize: "1rem",
+                              color: check.uptime_30d >= 99 ? "#1d5b35" : check.uptime_30d >= 95 ? "#e67e22" : "#c0392b",
+                            }}
+                          >
+                            {check.uptime_30d != null ? `${check.uptime_30d}%` : "—"}
+                          </strong>
+                          <span className="muted">Uptime 30d</span>
+                        </div>
+                      </div>
+
+                      {/* Última verificación */}
+                      {check.last_check && (
+                        <div className="muted" style={{ fontSize: "0.73rem", marginTop: "8px", textAlign: "right" }}>
+                          Última verificación: {new Date(check.last_check).toLocaleString("es-SV")}
                         </div>
                       )}
                     </div>
-                  </div>
-                ))}
-                {(!data?.pingdom?.checks ||
-                  data?.pingdom?.checks.length === 0) && (
-                  <div
-                    className="muted"
-                    style={{ textAlign: "center", padding: "20px" }}
-                  >
-                    No se encontraron checks registrados en esta cuenta de
-                    Pingdom.
-                  </div>
-                )}
-              </div>
+                  ))}
+                  {(!data?.uptimerobot?.checks || data?.uptimerobot?.checks.length === 0) && (
+                    <div className="muted" style={{ textAlign: "center", padding: "20px" }}>
+                      No se encontraron checks registrados en esta cuenta de UptimeRobot.
+                    </div>
+                  )}
+                </div>
+              </>
             )}
           </div>
 

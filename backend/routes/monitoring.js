@@ -2,7 +2,7 @@
  * GET /api/monitoring/status
  *
  * Agrega el estado de las tres herramientas de monitoreo:
- *   - Pingdom  : consulta la API REST externa de Pingdom con PINGDOM_API_TOKEN
+ *   - UptimeRobot : consulta la API REST externa de UptimeRobot con UPTIMEROBOT_API_KEY
  *   - Fail2ban : parsea el archivo de log montado como volumen compartido
  *   - Munin    : consulta el protocolo de texto de munin-node en el puerto 4949
  *
@@ -21,30 +21,41 @@ const router = express.Router();
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
 /**
- * Hace una petición HTTPS GET y devuelve el body parseado como JSON.
+ * Hace una petición HTTPS POST con cuerpo JSON y devuelve el body parseado como JSON.
  * Lanza un Error si el status HTTP >= 400.
  */
-function httpsGetJson(url, headers = {}) {
+function httpsPostJson(url, body) {
   return new Promise((resolve, reject) => {
-    const options = { headers };
-    https
-      .get(url, options, (res) => {
-        let raw = "";
-        res.on("data", (chunk) => (raw += chunk));
-        res.on("end", () => {
-          if (res.statusCode >= 400) {
-            return reject(
-              new Error(`HTTP ${res.statusCode}: ${raw.slice(0, 200)}`),
-            );
-          }
-          try {
-            resolve(JSON.parse(raw));
-          } catch {
-            reject(new Error("Respuesta de Pingdom no es JSON válido"));
-          }
-        });
-      })
-      .on("error", reject);
+    const dataString = JSON.stringify(body);
+    const parsedUrl = new URL(url);
+    const options = {
+      hostname: parsedUrl.hostname,
+      path: parsedUrl.pathname,
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Content-Length": Buffer.byteLength(dataString),
+      },
+    };
+    const req = https.request(options, (res) => {
+      let raw = "";
+      res.on("data", (chunk) => (raw += chunk));
+      res.on("end", () => {
+        if (res.statusCode >= 400) {
+          return reject(
+            new Error(`HTTP ${res.statusCode}: ${raw.slice(0, 200)}`),
+          );
+        }
+        try {
+          resolve(JSON.parse(raw));
+        } catch {
+          reject(new Error("Respuesta de la API no es JSON válido"));
+        }
+      });
+    });
+    req.on("error", reject);
+    req.write(dataString);
+    req.end();
   });
 }
 
@@ -273,43 +284,108 @@ function parseFailbanLog(logPath, maxEntries = 10) {
  *         description: Token inválido o ausente
  */
 router.get("/status", authenticate, async (req, res) => {
-  const pingdomToken = process.env.PINGDOM_API_TOKEN;
+  const uptimeRobotKey = process.env.UPTIMEROBOT_API_KEY;
   const muninHost = process.env.MUNIN_NODE_HOST || "monitoring-munin-node";
   const muninPort = parseInt(process.env.MUNIN_NODE_PORT || "4949", 10);
   const fail2banLog =
     process.env.FAIL2BAN_LOG_PATH || "/var/log/fail2ban/fail2ban.log";
 
   // Ejecutar las tres fuentes en paralelo; ninguna bloquea a las otras
-  const [pingdomResult, muninResult, fail2banResult] = await Promise.allSettled(
+  const [uptimerobotResult, muninResult, fail2banResult] = await Promise.allSettled(
     [
-      // ── Pingdom ──────────────────────────────────────────────────────────────
+      // ── UptimeRobot ──────────────────────────────────────────────────────────
       (async () => {
-        if (!pingdomToken) {
+        if (!uptimeRobotKey) {
           return {
             status: "unconfigured",
-            detail: "PINGDOM_API_TOKEN no definido",
+            detail: "UPTIMEROBOT_API_KEY no definido",
           };
         }
-        const data = await httpsGetJson(
-          "https://api.pingdom.com/api/3.1/checks",
+        const data = await httpsPostJson(
+          "https://api.uptimerobot.com/v2/getMonitors",
           {
-            Authorization: `Bearer ${pingdomToken}`,
-            "App-Key": pingdomToken,
+            api_key: uptimeRobotKey,
+            format: "json",
+            // Solicitar tiempos de respuesta de las últimas 24 h
+            response_times: 1,
+            // Solicitar porcentaje de uptime de últimos 7 y 30 días
+            custom_uptime_ratios: "7-30",
+            // Incluir el tiempo de respuesta promedio en el bloque del monitor
+            response_times_average: 60,
           },
         );
-        const checks = (data.checks || []).map((c) => ({
-          id: c.id,
-          name: c.name,
-          hostname: c.hostname,
-          status: c.status, // "up" | "down" | "unknown" | "paused"
-          last_response_time: c.lastresponsetime,
-          last_check: c.lasttesttime
-            ? new Date(c.lasttesttime * 1000).toISOString()
-            : null,
-        }));
+        if (data.stat !== "ok") {
+          throw new Error(
+            data.error?.message || "Error de respuesta de la API de UptimeRobot",
+          );
+        }
+        const checks = (data.monitors || []).map((m) => {
+          let mappedStatus = "unknown";
+          if (m.status === 2) mappedStatus = "up";
+          else if (m.status === 9 || m.status === 8) mappedStatus = "down";
+          else if (m.status === 0) mappedStatus = "paused";
+
+          // Último tiempo de respuesta registrado
+          const lastResponseTime =
+            m.response_times && m.response_times.length > 0
+              ? m.response_times[0].value
+              : null;
+
+          // Tiempo de respuesta promedio calculado de los últimos registros
+          const avgResponseTime =
+            m.response_times && m.response_times.length > 0
+              ? Math.round(
+                  m.response_times.reduce((sum, r) => sum + r.value, 0) /
+                    m.response_times.length,
+                )
+              : null;
+
+          // Desglose de uptime por período: "7-30" → índice 0 = 7d, índice 1 = 30d
+          const customRatios = m.custom_uptime_ratio
+            ? m.custom_uptime_ratio.split("-").map(parseFloat)
+            : [];
+
+          return {
+            id: m.id,
+            name: m.friendly_name,
+            hostname: m.url,
+            type: m.type,               // 1=HTTP, 2=keyword, 3=ping, etc.
+            status: mappedStatus,
+            last_response_time: lastResponseTime,
+            avg_response_time: avgResponseTime,
+            uptime_all_time: parseFloat(m.all_time_uptime_ratio) || null,
+            uptime_7d: customRatios[0] ?? null,
+            uptime_30d: customRatios[1] ?? null,
+            last_check:
+              m.response_times && m.response_times.length > 0
+                ? new Date(m.response_times[0].datetime * 1000).toISOString()
+                : null,
+          };
+        });
+
         const anyDown = checks.some((c) => c.status === "down");
+        const totalUp = checks.filter((c) => c.status === "up").length;
+        const totalDown = checks.filter((c) => c.status === "down").length;
+        const totalPaused = checks.filter((c) => c.status === "paused").length;
+
+        // Promedio global de uptime 7d de todos los monitores activos
+        const ratios7d = checks
+          .map((c) => c.uptime_7d)
+          .filter((v) => v !== null);
+        const avgUptime7d =
+          ratios7d.length > 0
+            ? +(ratios7d.reduce((s, v) => s + v, 0) / ratios7d.length).toFixed(2)
+            : null;
+
         return {
           status: anyDown ? "down" : "up",
+          summary: {
+            total: checks.length,
+            up: totalUp,
+            down: totalDown,
+            paused: totalPaused,
+            avg_uptime_7d: avgUptime7d,
+          },
           checks,
         };
       })(),
@@ -336,7 +412,7 @@ router.get("/status", authenticate, async (req, res) => {
 
   return res.status(200).json({
     timestamp: new Date().toISOString(),
-    pingdom: formatResult(pingdomResult, "Pingdom"),
+    uptimerobot: formatResult(uptimerobotResult, "UptimeRobot"),
     munin: formatResult(muninResult, "Munin"),
     fail2ban: formatResult(fail2banResult, "Fail2ban"),
   });
